@@ -1,6 +1,5 @@
 import asyncio
-from typing import Any, dict, list
-
+from typing import Any
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..workers.actor import Actor
@@ -12,10 +11,10 @@ logger = get_logger(__name__)
 class Orchestrator:
     """Orchestrator class to manage actors and observers."""
 
-    def __init__(self, llm_api_key: str | None = None):
+    def __init__(self):
         self.actors: list[Actor] = []
         self.observers: list[Observer] = []
-        self.llm_client = LLMClient(api_key=llm_api_key)
+        self.llm_client = LLMClient()
         self.worker_counter: dict[str, int] = {"actor": 0, "observer": 0}
         logger.info("Orchestrator initialized")
 

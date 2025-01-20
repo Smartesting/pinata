@@ -1,6 +1,9 @@
 from typing import List
 import asyncio
+from openai import OpenAI, OpenAIError
 from ..utils.logger import get_logger
+from ..utils.config import load_config
+import sys
 
 logger = get_logger(__name__)
 
@@ -8,8 +11,18 @@ logger = get_logger(__name__)
 class LLMClient:
     """Skeleton LLM client."""
 
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key
+    def __init__(self):
+        # Load environment variables
+        load_config()
+
+        logger.info("Connection to OpenAI ...")
+
+        try:
+            self.client = OpenAI()
+
+        except OpenAIError as e:
+            logger.fatal(e, exc_info=True)
+            sys.exit(1)
 
     async def get_roles(self, context: str) -> List[str]:
         """

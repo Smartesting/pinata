@@ -903,7 +903,7 @@ dependencies = [
 requires-dist = [
     { name = "asyncio", specifier = ">=3.4.3" },
     { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "openai", specifier = ">=1.59.7" },
+    { name = "openai", specifier = ">=1.59.8" },
     { name = "playwright", specifier = ">=1.49.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "requests", specifier = ">=2.32.3" },
