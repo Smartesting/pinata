@@ -1,9 +1,10 @@
-from typing import List, Any, Dict
 import asyncio
-from ..workers.actor import Actor
-from ..workers.observer import Observer
+from typing import Any, dict, list
+
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
+from ..workers.actor import Actor
+from ..workers.observer import Observer
 
 logger = get_logger(__name__)
 
@@ -11,11 +12,11 @@ logger = get_logger(__name__)
 class Orchestrator:
     """Orchestrator class to manage actors and observers."""
 
-    def __init__(self, llm_api_key: str = None):
-        self.actors: List[Actor] = []
-        self.observers: List[Observer] = []
+    def __init__(self, llm_api_key: str | None = None):
+        self.actors: list[Actor] = []
+        self.observers: list[Observer] = []
         self.llm_client = LLMClient(api_key=llm_api_key)
-        self.worker_counter: Dict[str, int] = {"actor": 0, "observer": 0}
+        self.worker_counter: dict[str, int] = {"actor": 0, "observer": 0}
         logger.info("Orchestrator initialized")
 
     def spawn_actor(self, name: str) -> Actor:
@@ -32,7 +33,7 @@ class Orchestrator:
         logger.info(f"Spawned Observer: {name}")
         return observer
 
-    async def spawn_and_process(self, context: str, data: Any) -> List[Any]:
+    async def spawn_and_process(self, context: str, data: Any) -> list[Any]:
         """
         Get roles from LLM, spawn corresponding workers, and process data.
         """
@@ -47,9 +48,7 @@ class Orchestrator:
         for role in roles:
             if role == "actor":
                 self.worker_counter["actor"] += 1
-                actor = self.spawn_actor(
-                    f"actor_{self.worker_counter['actor']}"
-                )
+                actor = self.spawn_actor(f"actor_{self.worker_counter['actor']}")
                 tasks.append(actor.process(data))
             elif role == "observer":
                 self.worker_counter["observer"] += 1
