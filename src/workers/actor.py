@@ -17,6 +17,6 @@ class Actor:
         logger.info(f"Actor {self.name} processing data")
 
         # Simulate some async work for now
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
 
         return f"Actor {self.name} processed: {data}"
