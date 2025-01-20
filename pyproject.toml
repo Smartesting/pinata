@@ -1,0 +1,14 @@
+[project]
+name = "vtaas-recherche"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10, <=3.12"
+dependencies = [
+    "asyncio>=3.4.3",
+    "ipykernel>=6.29.5",
+    "openai>=1.59.7",
+    "playwright>=1.49.1",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+]
