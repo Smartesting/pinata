@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
@@ -59,5 +58,8 @@ class Orchestrator:
                 logger.warning(f"Unknown role received: {role}")
 
         # Wait for all tasks to complete
-        results = await asyncio.gather(*tasks)
+        # results = await asyncio.gather(*tasks)
+
+        # Version where the different workers are executed sequentially
+        results = [await task for task in tasks]
         return results
