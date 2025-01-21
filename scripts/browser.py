@@ -12,6 +12,9 @@ async def main():
             print("it should spawn a browser")
             browser_outcome = await browser.goto("https://www.smartesting.com")
             print(f"goto: {browser_outcome}")
+            _ = await browser.mark_page()
+            elements = await browser.get_marks()
+            print(f"marks: {str(elements)}")
             sleep(5)
         except Exception as e:
             print(f"error: {str(e)}")

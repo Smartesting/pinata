@@ -9,6 +9,15 @@ T = TypeVar("T", bound="Browser")
 ScrollDirection: TypeAlias = Literal["up", "down"]
 
 
+class ViewportData(TypedDict):
+    scrollX: int
+    scrollY: int
+    viewportWidth: int
+    viewportHeight: int
+    pageWidth: int
+    pageHeight: int
+
+
 class ScreenshotResult(TypedDict):
     screenshot: NotRequired[bytes]
     error: NotRequired[str]
@@ -36,11 +45,11 @@ class Browser:
         """Initialize the browser instance"""
         if playwright is None:
             playwright = await pw.async_playwright().start()
-        self._browser = await playwright.chromium.launch(headless=self._headless)
+        self._browser = await playwright.chromium.launch(
+            headless=self._headless, timeout=3500
+        )
         self._context = await self._browser.new_context(bypass_csp=True)
-        await self._context.add_init_script(path="./js/mark_page.js")
         self._page = await self._context.new_page()
-        # _ = await self._page.wait_for_function("() => typeof markPage === 'function'")
         logger.info(f"Browser {self.id} started")
 
     @classmethod
@@ -78,7 +87,7 @@ class Browser:
         if not self._is_valid_url(url):
             return "Invalid URL"
         try:
-            response = await self.page.goto(url, wait_until="commit")
+            response = await self.page.goto(url, wait_until="networkidle")
             if response and response.ok:
                 return f"Successfully navigated to {url}"
             else:
@@ -87,6 +96,32 @@ class Browser:
         except Exception as e:
             logger.error(f"Navigation error: {str(e)}")
             return f"An error happened while navigating to {url}"
+
+    async def vertical_scroll(self, direction: str, pixels: int = 450) -> str:
+        """Scroll the page vertically"""
+        viewport_data = await self._get_viewport_data()
+        scroll_y = viewport_data["scrollY"]
+        viewport_height = viewport_data["viewportHeight"]
+        page_height = viewport_data["pageHeight"]
+
+        try:
+            if direction == "up":
+                if scroll_y == 0:
+                    return "You can't scroll up: you're already at the top of the page"
+                await self.page.mouse.wheel(0, -pixels)
+
+            elif direction == "down":
+                if scroll_y >= page_height - viewport_height - 10:
+                    return "You can't scroll down: you're already at the bottom of the page"
+                self.scrolled_to += pixels
+                await self.page.mouse.wheel(0, pixels)
+
+            return f"Successfully scrolled {pixels} {direction}"
+
+        except Exception as e:
+            error_msg = f"An error happened while scrolling {pixels} {direction}"
+            logger.error(f"{error_msg}: {str(e)}")
+            return error_msg
 
     async def select(self, mark: str, *values: str) -> str:
         """
@@ -138,16 +173,20 @@ class Browser:
             return {"error": "An error happened while taking screenshot"}
 
     async def mark_page(self):
-        await self.page.evaluate("markPage()")
+        _ = await self.page.add_script_tag(path="./js/mark_page.js")
+        _ = await self.page.wait_for_function(
+            "() => typeof window.markPage === 'function'"
+        )
+        return await self.page.evaluate("window.markPage()")
 
-    async def get_marked_elements(self) -> str:
+    async def get_marks(self) -> str:
         return await self.page.evaluate("""async () => {
-          const marks: Array<{ mark: string; element: string }> = []
+          const marks = []
           document.querySelectorAll('[data-mark]').forEach((e) => {
             const attributes = Array.from(e.attributes)
               .map((attr) => (['data-mark'].includes(attr.name) ? '' : `${attr.name}="${attr.value}"`))
               .join(' ')
-            let element: string
+            let element
             if (e.tagName.toLowerCase() === 'select') {
               const options = Array.from(e.children)
                 .filter((child) => child.tagName.toLowerCase() === 'option')
@@ -193,6 +232,19 @@ class Browser:
             return {"locator": locator}
         except Exception as e:
             return {"error": f"Could not resolve label: {str(e)}"}
+
+    async def _get_viewport_data(self) -> ViewportData:
+        """Get viewport related data"""
+        return await self.page.evaluate("""
+            () => ({
+                scrollX: window.scrollX,
+                scrollY: window.scrollY,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+                pageWidth: document.documentElement.scrollWidth,
+                pageHeight: document.documentElement.scrollHeight
+            })
+        """)
 
     @staticmethod
     def _is_valid_url(url: str) -> bool:

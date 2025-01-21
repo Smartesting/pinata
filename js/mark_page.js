@@ -31,7 +31,7 @@ function unmarkPage() {
 function markPage() {
   unmarkPage();
 
-  var bodyRect = document.body.getBoundingClientRect();
+  // var bodyRect = document.body.getBoundingClientRect();
 
   var items = Array.prototype.slice
     .call(document.querySelectorAll("*"))
@@ -156,3 +156,5 @@ function markPage() {
   );
   return coordinates;
 }
+
+window.markPage = markPage;
