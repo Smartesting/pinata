@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import uuid4
 from ..utils.logger import get_logger
-from ..schemas.worker_schemas import BaseWorker
+from ..schemas.worker import BaseWorker
 import asyncio
 
 logger = get_logger(__name__)

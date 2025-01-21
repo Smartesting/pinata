@@ -3,7 +3,7 @@ import pytest
 import pytest_asyncio
 from collections.abc import AsyncGenerator
 from playwright.async_api import Browser as PWBrowser, Page
-from workers.browser import Browser
+from VTAAS.workers.browser import Browser
 
 
 @pytest_asyncio.fixture

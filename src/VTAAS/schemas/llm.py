@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from .worker_schemas import (
+from .worker import (
     BaseWorker,
 )
 

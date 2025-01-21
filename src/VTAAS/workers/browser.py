@@ -1,7 +1,7 @@
-from typing import Literal, NotRequired, TypeAlias, TypeVar, TypedDict, final
+from typing import Literal, TypeAlias, TypeVar, TypedDict, final
 import playwright.async_api as pw
 from urllib.parse import urlparse
-from utils.logger import get_logger
+from VTAAS.utils.logger import get_logger
 
 logger = get_logger(__name__)
 T = TypeVar("T", bound="Browser")
@@ -18,15 +18,15 @@ class ViewportData(TypedDict):
     pageHeight: int
 
 
-class ScreenshotResult(TypedDict):
-    screenshot: NotRequired[bytes]
-    info: NotRequired[str]
-    error: NotRequired[str]
+class ScreenshotResult(TypedDict, total=False):
+    screenshot: bytes
+    info: str
+    error: str
 
 
-class ActionResult(TypedDict):
-    success: NotRequired[str]
-    fail: NotRequired[str]
+class ActionResult(TypedDict, total=False):
+    success: str
+    fail: str
 
 
 @final

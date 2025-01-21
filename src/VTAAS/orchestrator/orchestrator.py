@@ -3,8 +3,8 @@ from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..workers.actor import Actor
 from ..workers.observer import Observer
-from ..schemas.worker_schemas import BaseWorker, WorkerType
-from ..schemas.llm_schemas import LLMWorkerRequest
+from ..schemas.worker import BaseWorker, WorkerType
+from ..schemas.llm import LLMWorkerRequest
 
 logger = get_logger(__name__)
 

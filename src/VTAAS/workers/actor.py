@@ -2,7 +2,7 @@ from typing import Any
 import asyncio
 from uuid import uuid4
 
-from ..schemas.worker_schemas import BaseWorker
+from ..schemas.worker import BaseWorker
 from ..utils.logger import get_logger
 
 # from ..schemas.worker_schemas import ActorWorker

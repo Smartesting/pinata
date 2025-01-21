@@ -1,8 +1,8 @@
 import ast
 from openai import OpenAIError, AsyncOpenAI
 
-from ..schemas.worker_schemas import BaseWorker
-from ..schemas.llm_schemas import LLMWorkerRequest, LLMWorkerResponse
+from ..schemas.worker import BaseWorker
+from ..schemas.llm import LLMWorkerRequest, LLMWorkerResponse
 
 # from ..schemas.worker_schemas import ActorWorker, ObserverWorker
 from ..utils.logger import get_logger
