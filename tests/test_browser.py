@@ -53,21 +53,18 @@ async def test_browser_properties_before_initialization():
 async def test_goto_valid_url(browser: Browser):
     """Test navigation to a valid URL"""
     result = await browser.goto("https://www.example.com")
-    assert "success" in result
-    assert "Successfully navigated to https://www.example.com" in result["success"]
+    assert result == "Successfully navigated to https://www.example.com"
 
 
 @pytest.mark.asyncio
 async def test_goto_invalid_url(browser: Browser):
     """Test navigation to an invalid URL"""
     result = await browser.goto("not-a-valid-url")
-    assert "fail" in result
-    assert "Invalid URL" in result["fail"]
+    assert result == "Invalid URL"
 
 
 @pytest.mark.asyncio
 async def test_goto_nonexistent_domain(browser: Browser):
     """Test navigation to a nonexistent domain"""
     result = await browser.goto("https://nonex1stent-domain-name-25115.com")
-    assert "fail" in result
-    assert "An error happened while navigating to" in result["fail"]
+    assert result.startswith("An error happened while navigating to")
