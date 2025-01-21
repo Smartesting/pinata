@@ -1,6 +1,10 @@
-from typing import List
-import asyncio
-from openai import OpenAI, OpenAIError
+import ast
+from openai import OpenAIError, AsyncOpenAI
+
+from ..schemas.worker_schemas import BaseWorker
+from ..schemas.llm_schemas import LLMWorkerRequest, LLMWorkerResponse
+
+# from ..schemas.worker_schemas import ActorWorker, ObserverWorker
 from ..utils.logger import get_logger
 from ..utils.config import load_config
 import sys
@@ -18,20 +22,45 @@ class LLMClient:
         logger.info("Connection to OpenAI ...")
 
         try:
-            self.client = OpenAI()
+            # self.client = OpenAI()
+            self.aclient = AsyncOpenAI()
 
         except OpenAIError as e:
             logger.fatal(e, exc_info=True)
             sys.exit(1)
 
-    async def get_roles(self, context: str) -> List[str]:
-        """
-        Simulate an LLM call that returns a list of 'actor' or 'observer' strings.
-        In real implementation, this would make an actual API call to an LLM.
-        """
-        logger.info("Making LLM API call for role determination")
-        # Simulate API latency
-        await asyncio.sleep(1)
+    async def get_worker_configs(self, request: LLMWorkerRequest) -> list[BaseWorker]:
+        """Get worker configurations from LLM."""
+        try:
+            response = await self.aclient.beta.chat.completions.parse(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "super system prompt",
+                    },  # TODO: Put system prompt in orchestrator
+                    {
+                        "role": "user",
+                        "content": f"Context: {request.context}\nObjective: {request.objective}",
+                    },
+                ],
+                response_format=LLMWorkerResponse,
+            )
 
-        # Dummy response - in real implementation, this would be the LLM's output
-        return ["actor", "observer", "actor", "observer"]
+            # logger.info(
+            #     f"Received {response.choices[0].message.content} worker configurations from LLM"
+            # )
+
+            # Parse and validate response
+            llm_response = LLMWorkerResponse.model_validate(
+                ast.literal_eval(response.choices[0].message.content)
+            )
+
+            logger.info(
+                f"Received {len(llm_response.workers)} worker configurations from LLM"
+            )
+            return llm_response.workers
+
+        except Exception as e:
+            logger.error(f"Error getting worker configurations: {str(e)}")
+            raise
