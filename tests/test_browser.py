@@ -30,7 +30,7 @@ async def test_browser_initialization():
 @pytest.mark.asyncio
 async def test_browser_properties_before_initialization():
     """Test can't access page and browser if create has not been called"""
-    browser = Browser("test_browser")  # Not initialized
+    browser = Browser("test_browser", True)  # Not initialized
 
     with pytest.raises(
         RuntimeError,

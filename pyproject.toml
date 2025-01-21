@@ -97,3 +97,5 @@ docstring-code-line-length = "dynamic"
 dev = [
     "pytest-asyncio>=0.25.2",
 ]
+[tool.pytest.ini_options]
+pythonpath = "src"

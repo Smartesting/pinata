@@ -1,4 +1,4 @@
-from typing import Literal, TypeAlias, TypeVar, TypedDict, final
+from typing import Literal, NotRequired, TypeAlias, TypeVar, TypedDict, final
 import playwright.async_api as pw
 from urllib.parse import urlparse
 from VTAAS.utils.logger import get_logger
@@ -32,9 +32,10 @@ class Browser:
         self._headless = headless
         logger.info(f"Browser {self.id} instanciated")
 
-    async def initialize(self) -> None:
+    async def initialize(self, playwright: pw.Playwright | None) -> None:
         """Initialize the browser instance"""
-        playwright = await pw.async_playwright().start()
+        if playwright is None:
+            playwright = await pw.async_playwright().start()
         self._browser = await playwright.chromium.launch(headless=self._headless)
         self._context = await self._browser.new_context(bypass_csp=True)
         await self._context.add_init_script(path="./js/mark_page.js")
@@ -43,10 +44,15 @@ class Browser:
         logger.info(f"Browser {self.id} started")
 
     @classmethod
-    async def create(cls: type[T], name: str, headless: bool = True) -> T:
+    async def create(
+        cls: type[T],
+        name: str,
+        headless: bool = True,
+        playwright: pw.Playwright | None = None,
+    ) -> T:
         """Class method to create and initialize a Browser instance"""
         instance = cls(name, headless)
-        await instance.initialize()
+        await instance.initialize(playwright)
         return instance
 
     @property
