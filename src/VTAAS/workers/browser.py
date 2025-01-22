@@ -1,3 +1,4 @@
+import asyncio
 from typing import Literal, NotRequired, TypeAlias, TypeVar, TypedDict, final
 import playwright.async_api as pw
 from urllib.parse import urlparse
@@ -33,13 +34,13 @@ class Browser:
     """Playwright based Browser"""
 
     def __init__(self, name: str, headless: bool):
-        self.id = name
-        self.scrolled_to: int = -1
+        self._id = name
+        self._scrolled_to: int = -1
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
         self._headless = headless
-        logger.info(f"Browser {self.id} instanciated")
+        logger.info(f"Browser {self._id} instanciated")
 
     async def initialize(self, playwright: pw.Playwright | None) -> None:
         """Initialize the browser instance"""
@@ -50,7 +51,20 @@ class Browser:
         )
         self._context = await self._browser.new_context(bypass_csp=True)
         self._page = await self._context.new_page()
-        logger.info(f"Browser {self.id} started")
+
+        self._page.on("load", lambda load: self.load_js())
+        self._page.on("framenavigated", lambda load: self.load_js())
+        logger.info(f"Browser {self._id} started")
+
+    async def load_js(self):
+        _ = await self.page.add_script_tag(path="./js/mark_page.js")
+        _ = await self.page.wait_for_function(
+            "() => typeof window.markPage === 'function'"
+        )
+        _ = await self.page.add_script_tag(path="./js/element_to_html_string.js")
+        _ = await self.page.wait_for_function(
+            "() => typeof window.elementToHtmlString  === 'function'"
+        )
 
     @classmethod
     async def create(
@@ -82,6 +96,16 @@ class Browser:
             )
         return self._page
 
+    @property
+    def scrolled_to(self) -> int:
+        """Get the maximum scroll value for the current page"""
+        return self._scrolled_to
+
+    @property
+    def id(self) -> str:
+        """Get the maximum scroll value for the current page"""
+        return self._id
+
     async def goto(self, url: str) -> str:
         """Navigate to a URL"""
         if not self._is_valid_url(url):
@@ -97,24 +121,101 @@ class Browser:
             logger.error(f"Navigation error: {str(e)}")
             return f"An error happened while navigating to {url}"
 
+    async def click(self, mark: str) -> str:
+        before_url = self.page.url
+        outcome = ""
+
+        result = await self._resolve_mark(mark)
+        if "error" in result or "locator" not in result:
+            return result.get("error", "Unknown error")
+
+        locator = result["locator"]
+        html_element_str = await self.get_html_element_from_locator(result["locator"])
+        outcome += f"Clicked on ['{mark}'] ==> {html_element_str}. "
+
+        try:
+            await locator.click()
+            await self.page.wait_for_load_state("domcontentloaded")
+        except Exception as error:
+            return f"Unable to click on element '{mark}' due to a timeout or error: {error}"
+
+        after_url = self.page.url
+        is_url_effect = before_url != after_url
+        if is_url_effect:
+            outcome += f"A page change occurred. New URL: {after_url}"
+
+        return outcome.strip()
+
+    async def fill(self, mark: str, value: str) -> str:
+        result = await self._resolve_mark(mark)
+        if "error" in result or "locator" not in result:
+            return result.get("error", "Unknown error")
+
+        locator = result["locator"]
+        html_element_str = await self.get_html_element_from_locator(result["locator"])
+        tag: str = await locator.evaluate("element => element.nodeName")
+
+        try:
+            if (
+                tag == "INPUT"
+                and await locator.evaluate("element => element.type") == "date"
+            ):
+                await locator.fill(value)
+            elif tag == "SELECT":
+                _ = await locator.select_option(value)
+            else:
+                await locator.clear()
+                await locator.type(value)
+
+            typed_value = await locator.input_value()
+            if typed_value == value:
+                outcome = (
+                    f"Filled value {value} in element [{mark}] ==> {html_element_str}"
+                )
+                return outcome
+
+            return f"Could not fill {html_element_str} element. Are you sure this is the right label?"
+        except Exception as e:
+            print(e)
+            return f"There was an error while filling {html_element_str} element."
+
     async def vertical_scroll(self, direction: str, pixels: int = 450) -> str:
         """Scroll the page vertically"""
+        if pixels < 0:
+            return "negative pixel values not allowed."
+        if pixels < 10:
+            return "Pixel value is too low. Expecting 10 or more."
         viewport_data = await self._get_viewport_data()
         scroll_y = viewport_data["scrollY"]
         viewport_height = viewport_data["viewportHeight"]
         page_height = viewport_data["pageHeight"]
 
         try:
-            if direction == "up":
-                if scroll_y == 0:
-                    return "You can't scroll up: you're already at the top of the page"
-                await self.page.mouse.wheel(0, -pixels)
+            match direction:
+                case "up":
+                    print(
+                        f"page_height: {page_height}, viewport_height: {viewport_height}, scroll_y: {scroll_y}"
+                    )
+                    if scroll_y == 0:
+                        return (
+                            "You can't scroll up: you're already at the top of the page"
+                        )
+                    await self.page.mouse.wheel(0, -pixels)
+                    _ = await self.page.wait_for_function(
+                        f"window.scrollY === {scroll_y - pixels}"
+                    )
 
-            elif direction == "down":
-                if scroll_y >= page_height - viewport_height - 10:
-                    return "You can't scroll down: you're already at the bottom of the page"
-                self.scrolled_to += pixels
-                await self.page.mouse.wheel(0, pixels)
+                case "down":
+                    if scroll_y >= page_height - viewport_height - 10:
+                        return "You can't scroll down: you're already at the bottom of the page"
+                    self._scrolled_to += pixels
+                    await self.page.mouse.wheel(0, pixels)
+                    _ = await self.page.wait_for_function(
+                        f"window.scrollY === {scroll_y + pixels}"
+                    )
+
+                case _:
+                    return 'Invalid direction. Expected "up" or "down".'
 
             return f"Successfully scrolled {pixels} {direction}"
 
@@ -127,6 +228,9 @@ class Browser:
         """
         Select options in a dropdown element identified by its label
         """
+        if not values:
+            return "Missing option(s) to select"
+
         result = await self._resolve_mark(mark)
         if "error" in result or "locator" not in result:
             return result.get("error", "Unknown error")
@@ -173,37 +277,28 @@ class Browser:
             return {"error": "An error happened while taking screenshot"}
 
     async def mark_page(self):
-        _ = await self.page.add_script_tag(path="./js/mark_page.js")
         _ = await self.page.wait_for_function(
             "() => typeof window.markPage === 'function'"
         )
         return await self.page.evaluate("window.markPage()")
 
-    async def get_marks(self) -> str:
+    async def get_marks(self) -> list[str]:
         return await self.page.evaluate("""async () => {
           const marks = []
           document.querySelectorAll('[data-mark]').forEach((e) => {
-            const attributes = Array.from(e.attributes)
-              .map((attr) => (['data-mark'].includes(attr.name) ? '' : `${attr.name}="${attr.value}"`))
-              .join(' ')
-            let element
-            if (e.tagName.toLowerCase() === 'select') {
-              const options = Array.from(e.children)
-                .filter((child) => child.tagName.toLowerCase() === 'option')
-                .map((option) => option.textContent?.trim())
-                .join(', ')
-              element = `<${e.tagName.toLowerCase()} ${attributes}>${options}</${e.tagName.toLowerCase()}>`
-            } else {
-              const innerText = e.textContent?.trim()
-              element =
-                `<${e.tagName.toLowerCase()} ${attributes}>` +
-                innerText +
-                `</${e.tagName.toLowerCase()}>`
-            }
-            marks.push({ mark: e.getAttribute('data-mark') ?? '', element })
+            marks.push({ mark: e.getAttribute('data-mark'), element: window.elementToHtmlString(e) })
           })
           return marks
         }""")
+
+    async def get_html_element_from_locator(self, locator: pw.Locator) -> str:
+        _ = await self.page.wait_for_function(
+            "() => typeof window.elementToHtmlString === 'function'"
+        )
+        element: str = await locator.evaluate(
+            """(element) => window.elementToHtmlString(element)"""
+        )
+        return element
 
     async def get_page_info(self) -> str:
         """Get current page information"""
@@ -222,16 +317,15 @@ class Browser:
         """
         Resolve a mark to a Playwright locator
         """
-        locators = await self.page.locator(f'[data-mark="{mark}"]').all()
-        if len(locators) < 1:
-            return {
-                "error": "This label does not exist",
-            }
         try:
-            locator = self.page.get_by_label(mark)
-            return {"locator": locator}
+            locators = await self.page.locator(f'[data-mark="{mark}"]').all()
+            if len(locators) < 1:
+                return {
+                    "error": "This mark does not exist",
+                }
+            return {"locator": locators[0]}
         except Exception as e:
-            return {"error": f"Could not resolve label: {str(e)}"}
+            return {"error": f"Could not resolve mark: {str(e)}"}
 
     async def _get_viewport_data(self) -> ViewportData:
         """Get viewport related data"""
@@ -250,6 +344,6 @@ class Browser:
     def _is_valid_url(url: str) -> bool:
         try:
             result = urlparse(url)
-            return bool(result.netloc)
+            return bool(result.scheme in ["http", "https"] and result.netloc)
         except Exception:
             return False
