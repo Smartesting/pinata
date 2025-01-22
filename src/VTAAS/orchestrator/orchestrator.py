@@ -1,9 +1,12 @@
-from typing import Any, Union
+from typing import Any, Optional, Union
+
+from VTAAS.data.testcase import TestCase
+from VTAAS.workers.browser import Browser
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..workers.actor import Actor
 from ..workers.observer import Observer
-from ..schemas.worker import BaseWorker, WorkerType
+from ..schemas.worker import BaseWorker, WorkerStatus, WorkerType
 from ..schemas.llm import LLMWorkerRequest
 
 logger = get_logger(__name__)
@@ -14,15 +17,40 @@ class Orchestrator:
 
     def __init__(self):
         self.workers: list[BaseWorker] = []
-        self.actors: list[Actor] = []
-        self.observers: list[Observer] = []
+        self.active_workers: list[BaseWorker] = []  # New list for active workers
         self.llm_client = LLMClient()
+        self.browser = Browser("1", True)
         self.worker_counter: dict[str, int] = {"actor": 0, "observer": 0}
         logger.info("Orchestrator initialized")
 
-    async def initialize_workers(self, context: str, objective: str):
-        """Initialise workers based on LLM response."""
-        request = LLMWorkerRequest(context=context, objective=objective)
+    def get_main_prompt(self, action: str, assertion: str) -> str:
+        return f"action: {action}, assertion: {assertion}"
+
+    async def process_TestCase(self, test_case: TestCase) -> None:
+        """Manages the main execution loop for the given Test Case."""
+
+        logger.info(f"Processing {test_case.name}")
+
+        # Iterating over all actions and assertions till the end of the TC
+        for i in range(len(test_case)):
+            current_action = test_case.actions[i]
+            current_assertion = test_case.expected_results[i]
+
+            # Placeholder for the call to the browser to get initial screenshot:
+            #
+            #
+            #
+            screenshot = "I am a screenshot in disguise"
+
+            await self.initialize_workers(
+                self.get_main_prompt(current_action, current_assertion), screenshot
+            )
+
+            await self.process()
+
+    async def initialize_workers(self, prompt: str, screenshot: Optional[str]):
+        """Initialise workers based on LLM call."""
+        request = LLMWorkerRequest(prompt=prompt, screenshot=screenshot)
 
         # Get worker configurations from LLM
         worker_configs = await self.llm_client.get_worker_configs(request)
@@ -31,50 +59,28 @@ class Orchestrator:
         for config in worker_configs:
             self.spawn_worker(config)
 
-        logger.info(
-            f"Initialized {len(self.actors)} actors and {len(self.observers)} observers"
-        )
+        logger.info(f"Initialized {len(self.active_workers)} new workers")
 
     def spawn_worker(self, config: BaseWorker) -> Union[Actor, Observer]:
         """Spawn a new worker based on the provided configuration."""
         if config.type == WorkerType.ACTOR:
-            worker = Actor(config)
+            worker = Actor(config, self.browser)
             self.workers.append(worker)
-            self.actors.append(worker)
-            # logger.info(f"Spawned Actor: {config.name}")
+            self.active_workers.append(worker)
         else:
-            worker = Observer(config)
+            worker = Observer(config, self.browser)
             self.workers.append(worker)
-            self.observers.append(worker)
-            # logger.info(f"Spawned Observer: {config.name}")
+            self.active_workers.append(worker)
         return worker
 
-    async def spawn_and_process(self, context: str, data: Any) -> list[Any]:
+    async def process(self) -> list[Any]:
         """
-        Get roles from LLM, spawn corresponding workers, and process data.
+        Process only active workers and retire them after processing.
         """
-        # Get roles from LLM
-        # roles = await self.llm_client.get_roles(context)
-        # logger.info(f"Received roles from LLM: {roles}")
-
-        # Create tasks list for processing
-        # tasks = []
-
-        # Spawn workers based on roles and create their tasks
-        # for actor in self.actors:
-        #     if isinstance(actor, Actor):
-        #         self.worker_counter["actor"] += 1
-        #         tasks.append(actor.process(data))
-        #     elif isinstance(actor, Observer()):
-        #         self.worker_counter["observer"] += 1
-        #         observer = self.spawn_observer(
-        #             f"observer_{self.worker_counter['observer']}"
-        #         )
-        #         tasks.append(observer.process(data))
-
-        # Wait for all tasks to complete
-        # results = await asyncio.gather(*tasks)
-
-        # Version where the different workers are executed sequentially
-        results = [await task for task in [x.process(data) for x in self.workers]]
+        results = []
+        for worker in self.active_workers[:]:  # Create a copy of the list to iterate
+            result = await worker.process()
+            results.append(result)
+            worker.status = WorkerStatus.RETIRED
+            self.active_workers.remove(worker)
         return results

@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 from .worker import (
     BaseWorker,
@@ -7,8 +8,8 @@ from .worker import (
 class LLMWorkerRequest(BaseModel):
     """Schema for the request sent to LLM."""
 
-    context: str = Field(..., description="Context of the task to be performed")
-    objective: str = Field(..., description="Main objective to be achieved")
+    prompt: str = Field(..., description="Prompt for the request to the LLM")
+    screenshot: Optional[str] = Field(..., description="Main objective to be achieved")
 
 
 class LLMWorkerResponse(BaseModel):

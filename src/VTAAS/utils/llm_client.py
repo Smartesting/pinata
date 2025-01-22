@@ -41,7 +41,7 @@ class LLMClient:
                     },  # TODO: Put system prompt in orchestrator
                     {
                         "role": "user",
-                        "content": f"Context: {request.context}\nObjective: {request.objective}",
+                        "content": f"{request.prompt}\nscreenshot: {request.screenshot}",
                     },
                 ],
                 response_format=LLMWorkerResponse,

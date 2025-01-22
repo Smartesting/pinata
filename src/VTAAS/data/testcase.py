@@ -3,6 +3,10 @@ from typing import List, Dict
 import os
 import re
 
+from VTAAS.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class TestCase:
     def __init__(self, full_name: str, actions: List[str], expected_results: List[str]):
@@ -37,6 +41,10 @@ class TestCase:
             f"expected_results={self.expected_results})"
         )
 
+    # We admit there can be empty assertions, and it's ok.
+    def __len__(self) -> int:
+        return len(self.actions)
+
 
 class TestCaseCollection:
     # To ensure it is ignored by pytest
@@ -47,6 +55,7 @@ class TestCaseCollection:
         self.name = self._get_file_name()
         self.test_cases: List[TestCase] = []
         self._parse_file()
+        logger.info(self)
 
     def _get_file_name(self) -> str:
         """

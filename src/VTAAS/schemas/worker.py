@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class WorkerType(str, Enum):
@@ -7,10 +7,16 @@ class WorkerType(str, Enum):
     OBSERVER = "observer"
 
 
+class WorkerStatus(str, Enum):
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
 class BaseWorker(BaseModel):
     """Base worker schema with common attributes."""
 
     type: WorkerType
+    status: WorkerStatus = Field(default=WorkerStatus.ACTIVE)
     # id: str = Field(default_factory=lambda: uuid4().hex)
     query: str  # = Field(..., description="Task description or query to be executed")
 
