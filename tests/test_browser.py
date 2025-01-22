@@ -306,15 +306,15 @@ async def test_get_marks(browser: Browser, dummy_page_path: Path):
 
         result = await browser.get_marks()
         assert len(result) == 6
-        assert result[0]["mark"] == "dropdown"
+        assert result[0]["mark"] == "simple-button"
         assert (
             result[0]["element"]
-            == '<select id="dropdownId" data-mark="dropdown">Option 1, Option 2, Option 3</select>'
+            == '<button data-mark="simple-button">Click Me</button>'
         )
-        assert result[1]["mark"] == "not-a-select"
+        assert result[1]["mark"] == "navigation-link"
         assert (
             result[1]["element"]
-            == '<div id="notSelectId" data-mark="not-a-select">Not a select element</div>'
+            == '<a href="https://www.example.com" data-mark="navigation-link">Go to example.com</a>'
         )
 
 
