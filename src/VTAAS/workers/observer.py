@@ -1,37 +1,34 @@
-from typing import Any
 from uuid import uuid4
 
+from VTAAS.schemas.llm import LLMRequest
+from VTAAS.schemas.verdict import StepVerdict
 from VTAAS.workers.browser import Browser
 from ..utils.logger import get_logger
 from ..schemas.worker import BaseWorker
-import asyncio
 
 logger = get_logger(__name__)
 
 
-class Observer:
+class Observer(BaseWorker):
     """Observer implementation."""
 
-    def __init__(self, config: BaseWorker, browser: Browser):
+    def __init__(self, config: BaseWorker, browser: Browser, llm_client):
         self.config = config
-        # self.name = config.name
         self.id = uuid4().hex
+        self.llm_client = llm_client
         self.query = config.query
         self.browser = browser
-        # self.interval = config.observation_interval
         logger.info(f"Observer {self.id} initialized with query: {self.query}")
 
-    async def process(self) -> Any:
+    async def process(self) -> StepVerdict:
         """Process the given data asynchronously."""
         logger.info(f"Observer {self.id} processing data")
 
-        # Simulate some async work for now
-        await asyncio.sleep(0.1)
+        screenshot = "This is a screenshot for now"
 
-        return {
-            "worker_type": "observer",
-            "id": self.id,
-            "query": self.query,
-            "observation": "Observed: something",
-            # "interval": self.interval,
-        }
+        request = LLMRequest(prompt=self.query, screenshot=screenshot)
+
+        # Simulate some async work for now
+        # await asyncio.sleep(0.1)
+        verdict: StepVerdict = await self.llm_client.get_step_verdict(request)
+        return verdict

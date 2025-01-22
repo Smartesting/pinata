@@ -1,11 +1,12 @@
 from typing import Optional
+from VTAAS.schemas.verdict import StepVerdict
 from pydantic import BaseModel, Field
 from .worker import (
     BaseWorker,
 )
 
 
-class LLMWorkerRequest(BaseModel):
+class LLMRequest(BaseModel):
     """Schema for the request sent to LLM."""
 
     prompt: str = Field(..., description="Prompt for the request to the LLM")
@@ -17,23 +18,8 @@ class LLMWorkerResponse(BaseModel):
 
     workers: list[BaseWorker]
 
-    # @field_validator("workers")
-    # def validate_workers(cls, workers):
-    #     validated_workers = []
-    #     for worker in workers:
-    #         # Ensure type field exists
-    #         if "type" not in worker:
-    #             raise ValueError("Worker must have a 'type' field")
-    #         if "query" not in worker:
-    #             raise ValueError("Worker must have a 'query' field")
 
-    #         # Convert to appropriate worker type
-    #         if worker["type"] == WorkerType.ACTOR:
-    #             validated_worker = ActorWorker(**worker)
-    #         elif worker["type"] == WorkerType.OBSERVER:
-    #             validated_worker = ObserverWorker(**worker)
-    #         else:
-    #             raise ValueError(f"Invalid worker type: {worker['type']}")
+class LLMVerdictResponse(BaseModel):
+    """Schema for the response received from LLM."""
 
-    #         validated_workers.append(validated_worker)
-    #     return validated_workers
+    verdict: StepVerdict

@@ -78,7 +78,7 @@ class TestCaseCollection:
         """
         Parses the CSV file and returns a dictionary of test cases.
         """
-        test_cases = {}
+        test_cases: dict[str, dict[str, list[str]]] = {}
 
         with open(self.file_path, mode="r", newline="", encoding="utf-8") as csvfile:
             reader = csv.reader(csvfile)
