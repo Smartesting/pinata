@@ -1,5 +1,5 @@
-import asyncio
-from typing import Literal, NotRequired, TypeAlias, TypeVar, TypedDict, final
+from typing import Any, Literal, NotRequired, TypeAlias, TypeVar, TypedDict, final
+from uuid import uuid4
 import playwright.async_api as pw
 from urllib.parse import urlparse
 from VTAAS.utils.logger import get_logger
@@ -19,6 +19,13 @@ class ViewportData(TypedDict):
     pageHeight: int
 
 
+class BrowserParams(TypedDict):
+    playwright: pw.Playwright | None
+    headless: bool
+    timeout: int
+    id: str
+
+
 class ScreenshotResult(TypedDict):
     screenshot: NotRequired[bytes]
     error: NotRequired[str]
@@ -33,28 +40,42 @@ class MarkResult(TypedDict):
 class Browser:
     """Playwright based Browser"""
 
-    def __init__(self, name: str, headless: bool):
-        self._id = name
+    def __init__(self, **kwargs: BrowserParams):
+        default_browser_params: BrowserParams = {
+            "headless": True,
+            "timeout": 3000,
+            "id": uuid4().hex,
+            "playwright": None,
+        }
+        custom_params = kwargs
+        if custom_params and set(custom_params.keys()).issubset(
+            set(default_browser_params.keys())
+        ):
+            default_browser_params.update(custom_params)
+        elif custom_params:
+            raise ValueError("unknown browser parameter(s) received")
+
+        self._params = default_browser_params
         self._scrolled_to: int = -1
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
-        self._headless = headless
-        logger.info(f"Browser {self._id} instanciated")
+        logger.info(f"Browser {self.id} instanciated")
 
-    async def initialize(self, playwright: pw.Playwright | None) -> None:
+    async def initialize(self) -> None:
         """Initialize the browser instance"""
-        if playwright is None:
-            playwright = await pw.async_playwright().start()
-        self._browser = await playwright.chromium.launch(
-            headless=self._headless, timeout=3500
+        if self._params["playwright"] is None:
+            self._params["playwright"] = await pw.async_playwright().start()
+        self._browser = await self._params["playwright"].chromium.launch(
+            headless=self._params["headless"],
         )
         self._context = await self._browser.new_context(bypass_csp=True)
+        self._context.set_default_timeout(self._params["timeout"])
         self._page = await self._context.new_page()
 
         self._page.on("load", lambda load: self.load_js())
         self._page.on("framenavigated", lambda load: self.load_js())
-        logger.info(f"Browser {self._id} started")
+        logger.info(f"Browser {self.id} started")
 
     async def load_js(self):
         _ = await self.page.add_script_tag(path="./js/mark_page.js")
@@ -67,15 +88,10 @@ class Browser:
         )
 
     @classmethod
-    async def create(
-        cls: type[T],
-        name: str,
-        headless: bool = True,
-        playwright: pw.Playwright | None = None,
-    ) -> T:
+    async def create(cls: type[T], **kwargs: BrowserParams) -> T:
         """Class method to create and initialize a Browser instance"""
-        instance = cls(name, headless)
-        await instance.initialize(playwright)
+        instance = cls(**kwargs)
+        await instance.initialize()
         return instance
 
     @property
@@ -104,7 +120,7 @@ class Browser:
     @property
     def id(self) -> str:
         """Get the maximum scroll value for the current page"""
-        return self._id
+        return self._params["id"]
 
     async def goto(self, url: str) -> str:
         """Navigate to a URL"""

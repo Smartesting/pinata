@@ -57,7 +57,7 @@ async def dummy_page_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest_asyncio.fixture
 async def browser() -> AsyncGenerator[Browser, None]:
     """create and close Browser"""
-    browser_instance = await Browser.create("test_browser")
+    browser_instance = await Browser.create(timeout=1000, id="test_browser")
     yield browser_instance
     await browser_instance.close()
 
@@ -65,7 +65,7 @@ async def browser() -> AsyncGenerator[Browser, None]:
 @pytest.mark.asyncio
 async def test_browser_initialization():
     """Test initialization"""
-    browser = await Browser.create("test_browser")
+    browser = await Browser.create(timeout=1000, id="test_browser")
     try:
         assert browser.id == "test_browser"
         assert browser.scrolled_to == -1
@@ -78,7 +78,7 @@ async def test_browser_initialization():
 @pytest.mark.asyncio
 async def test_browser_properties_before_initialization():
     """Test can't access page and browser if create has not been called"""
-    browser = Browser("test_browser", True)  # Not initialized
+    browser = Browser(timeout=1000, id="test_browser")  # Not initialized
 
     with pytest.raises(
         RuntimeError,
