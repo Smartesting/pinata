@@ -1,19 +1,15 @@
 You are provided with the following inputs:
 
 <test_case>
-{TEST_CASE}
+{test_case}
 </test_case>
 
 <current_step>
-{CURRENT_STEP}
+{current_step}
 </current_step>
 
-<accomplished_steps>
-{ACCOMPLISHED_STEPS}
-</accomplished_steps>
-
 <browser_command_history>
-{BROWSER_COMMAND_HISTORY}
+{history}
 </browser_command_history>
 
 Perform your task by following these instructions:

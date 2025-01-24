@@ -1,8 +1,12 @@
 import ast
+import re
+from typing import Any
 from VTAAS.schemas.verdict import WorkerVerdict
 from openai import OpenAIError, AsyncOpenAI
 
-from ..schemas.worker import BaseWorker
+from VTAAS.workers.actor import Actor
+
+from ..schemas.worker import BaseWorker, WorkerConfig, WorkerType
 from ..schemas.llm import LLMRequest, LLMWorkerResponse
 
 # from ..schemas.worker_schemas import ActorWorker, ObserverWorker
@@ -38,14 +42,14 @@ class LLMClient:
                 messages=[
                     {
                         "role": "system",
-                        "content": "super system prompt",
+                        "content": request.prompt[0],
                     },  # TODO: Put system prompt in orchestrator
                     {
                         "role": "user",
-                        "content": f"{request.prompt}\nscreenshot: {request.screenshot}",
+                        "content": request.prompt[1],
                     },
                 ],
-                response_format=LLMWorkerResponse,
+                # response_format=LLMWorkerResponse,
             )
 
             # logger.info(
@@ -65,6 +69,29 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
+
+    def _extract_worker_sequence(self, response: str) -> list[Any]:
+        xml_pattern = r"<act_assert_sequence>(.*?)</act_assert_sequence>"
+        match = re.search(xml_pattern, response, re.DOTALL)
+        if match:
+            workers: list[WorkerConfig] = []
+            inner_content = match.group(1)
+            for w in inner_content.splitlines():
+                act_pattern = r"act\(\"(.*?)\"\)"
+                match = re.search(act_pattern, w, re.DOTALL)
+                if match:
+                    workers.append(
+                        WorkerConfig(type=WorkerType.ACTOR, query=match.group(1))
+                    )
+                    continue
+                assert_pattern = r"assert\(\"(.*?)\"\)"
+                match = re.search(assert_pattern, w, re.DOTALL)
+                if match:
+                    workers.append(
+                        WorkerConfig(type=WorkerType.OBSERVER, query=match.group(1))
+                    )
+            return workers
+        return []
 
     async def get_step_verdict(self, request: LLMRequest) -> WorkerVerdict:
         """Get verdict for step case from the LLM. Used by Observer Workers"""

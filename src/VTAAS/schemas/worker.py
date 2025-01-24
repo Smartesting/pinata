@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import TypedDict
 from pydantic import BaseModel, Field
 from ..schemas.verdict import WorkerVerdict
 import abc
@@ -12,6 +13,11 @@ class WorkerType(str, Enum):
 class WorkerStatus(str, Enum):
     ACTIVE = "active"
     RETIRED = "retired"
+
+
+class WorkerConfig(TypedDict):
+    type: WorkerType
+    query: str
 
 
 class BaseWorker(BaseModel):

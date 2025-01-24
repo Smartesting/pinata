@@ -39,11 +39,13 @@ class Orchestrator:
 
         logger.info(f"Processing {test_case.name}")
         self.test_case = test_case
-        _ = await self.browser.goto()
+        url = "http://wwww.vtaas-browser.com"
+        _ = await self.browser.goto(url)
         # Iterating over all actions and assertions till the end of the TC
         # First iteration of VTAAS allows only one shot for each tuple action + assertion
         results: list[WorkerVerdict] = []
         for i in range(len(test_case)):
+            # action, assertion = test_case.get_step(i)
             screenshot = b""
             screenshotResult = await self.browser.screenshot()
             if "screenshot" in screenshotResult:
@@ -112,7 +114,16 @@ class Orchestrator:
             prompt_template = prompt_file.read()
         return prompt_template
 
-    def _get_user_prompt(self, test_step_index: int, history: str | None) -> str:
-        with open("user_prompt.txt", "r", encoding="utf-8") as prompt_file:
+    def _get_user_prompt(self, test_step_index: int, history: str | None = None) -> str:
+        with open(
+            "./src/VTAAS/orchestrator/prompt.txt", "r", encoding="utf-8"
+        ) as prompt_file:
             prompt_template = prompt_file.read()
-        return prompt_template.format(test_step_index, history)
+
+        test_case = "blablabla"
+        action = "Login as superuser/trial"
+        assertion = "Logged in as admin"
+        test_step = f"{test_step_index}. action: {action}, assertion: {assertion}"
+        return prompt_template.format(
+            test_case=test_case, current_step=test_step, history=history
+        )
