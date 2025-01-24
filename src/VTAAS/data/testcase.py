@@ -4,6 +4,8 @@ import os
 import re
 
 from VTAAS.utils.logger import get_logger
+from typing import Sequence
+
 
 logger = get_logger(__name__)
 
@@ -14,6 +16,13 @@ class TestCase:
         self._parse_full_name(full_name)
         self.actions = actions
         self.expected_results = expected_results
+        self.steps: Sequence[tuple[str, str]] = list(
+            zip(self.actions, self.expected_results)
+        )
+
+    def get_step(self, n: int):
+        """Get the nth step in the test step"""
+        return self.steps[n]
 
     def _parse_full_name(self, full_name: str) -> None:
         """
@@ -44,6 +53,10 @@ class TestCase:
     # We admit there can be empty assertions, and it's ok.
     def __len__(self) -> int:
         return len(self.actions)
+
+    def __iter__(self):
+        for step in self.steps:
+            yield step
 
 
 class TestCaseCollection:
@@ -98,12 +111,12 @@ class TestCaseCollection:
                 else:
                     # Add actions and expected results if a test case is defined
                     if current_test_case and len(row) >= 2:
-                        action = row[1].strip()
-                        expected_result = row[2].strip()
+                        action = row[1].strip() if len(row) > 1 else ""
+                        expected_result = row[2].strip() if len(row) > 2 else ""
 
-                        if action and action != "Actions":
+                        if action != "Actions":
                             test_cases[current_test_case]["actions"].append(action)
-                        if expected_result and expected_result != "Expected Result":
+                        if expected_result != "Expected Result":
                             test_cases[current_test_case]["expected_results"].append(
                                 expected_result
                             )

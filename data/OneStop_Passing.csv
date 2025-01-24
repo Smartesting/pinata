@@ -382,3 +382,32 @@ The message ""Welcome, Emma Lopez!"" is displayed at the right on the top of the
 Fill in ""Current Password"" field.
 Click on the button ""Save"".","The page ""Customer Login"" is displayed with a confirmation message ""You saved the account information"".
 I'm disconnected.",WARNING : cela va changer le password du compte choisi --> il faudra restaurer la base de données pour continuer l'exécution des tests
+,,,
+►,TC-30-P :: test_empty_action,,ACH
+#,Actions,Expected Result,
+1,"Type ""http://www.vtaas-benchmark.com:7770/"" on the url bar.
+And click on ""Enter"".","The Welcome page of web ""OneStopShop"" is displayed.",
+2,,"I'm connected on the website. The screen ""My Account"" is displayed. 
+The message ""Welcome, Emma Lopez!"" is displayed at the right on the top of the page.",
+3,"Click on the tab ""My Account""","The page ""My account"" is displayed.",
+4,"On the ""Account Information"" section, click on the link ""Edit""","The page ""Edit Account Information"" is displayed.",
+5,"Click on the check box ""Change Email""","""Change Email"" section appears below.",
+5,"Modify the email.
+Fill in ""Current Password"" field.
+Click on the button ""Save"".","The page ""Customer Login"" is displayed with a confirmation message ""You saved the account information"".
+I'm disconnected.",WARNING : cela va changer le password du compte choisi --> il faudra restaurer la base de données pour continuer l'exécution des tests
+,,,
+►,TC-31-P :: test_empty_assertion,,ACH
+#,Actions,Expected Result,
+1,"Type ""http://www.vtaas-benchmark.com:7770/"" on the url bar.
+And click on ""Enter"".","The Welcome page of web ""OneStopShop"" is displayed.",
+2,"Enter Email and Password fields.
+Click on the buton ""Sign In"".","I'm connected on the website. The screen ""My Account"" is displayed. 
+The message ""Welcome, Emma Lopez!"" is displayed at the right on the top of the page.",
+3,"Click on the tab ""My Account""",,
+4,"On the ""Account Information"" section, click on the link ""Edit""","The page ""Edit Account Information"" is displayed.",
+5,"Click on the check box ""Change Email""","""Change Email"" section appears below.",
+5,"Modify the email.
+Fill in ""Current Password"" field.
+Click on the button ""Save"".","The page ""Customer Login"" is displayed with a confirmation message ""You saved the account information"".
+I'm disconnected.",WARNING : cela va changer le password du compte choisi --> il faudra restaurer la base de données pour continuer l'exécution des tests
