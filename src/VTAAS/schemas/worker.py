@@ -1,6 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
-from ..schemas.verdict import StepVerdict
+from ..schemas.verdict import WorkerVerdict
 import abc
 
 
@@ -21,7 +21,7 @@ class BaseWorker(BaseModel):
     status: WorkerStatus = Field(default=WorkerStatus.ACTIVE)
 
     @abc.abstractmethod
-    async def process(self) -> StepVerdict: ...
+    async def process(self) -> WorkerVerdict: ...
 
     # id: str = Field(default_factory=lambda: uuid4().hex)
     query: str  # = Field(..., description="Task description or query to be executed")

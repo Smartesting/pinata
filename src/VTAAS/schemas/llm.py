@@ -1,5 +1,4 @@
-from typing import Optional
-from VTAAS.schemas.verdict import StepVerdict
+from VTAAS.schemas.verdict import WorkerVerdict
 from pydantic import BaseModel, Field
 from .worker import (
     BaseWorker,
@@ -9,8 +8,10 @@ from .worker import (
 class LLMRequest(BaseModel):
     """Schema for the request sent to LLM."""
 
-    prompt: str = Field(..., description="Prompt for the request to the LLM")
-    screenshot: Optional[str] = Field(..., description="Main objective to be achieved")
+    prompt: tuple[str, str] = Field(
+        ..., description="Prompt for the request to the LLM"
+    )  # noqa
+    screenshot: bytes | None = Field(..., description="Main objective to be achieved")
 
 
 class LLMWorkerResponse(BaseModel):
@@ -22,4 +23,4 @@ class LLMWorkerResponse(BaseModel):
 class LLMVerdictResponse(BaseModel):
     """Schema for the response received from LLM."""
 
-    verdict: StepVerdict
+    verdict: WorkerVerdict

@@ -1,0 +1,49 @@
+You are provided with the following inputs:
+
+<test_case>
+{TEST_CASE}
+</test_case>
+
+<current_step>
+{CURRENT_STEP}
+</current_step>
+
+<accomplished_steps>
+{ACCOMPLISHED_STEPS}
+</accomplished_steps>
+
+<browser_command_history>
+{BROWSER_COMMAND_HISTORY}
+</browser_command_history>
+
+Perform your task by following these instructions:
+
+1. Analyze the current test step carefully. Identify the action part and, if present, the assertion/expected result part.
+
+2. Analyze the screenshot of the web application. Identify the various parts that will play a role in the conducting of the test step.
+
+3. Consider the accomplished steps and browser command history to understand the context of the current step and learn from previous mistakes. Identify any information that may influence your planning.
+
+4. Convert the test step into a sequence of Act and Assert statements. Each statement should be atomic and focused on a single action or assertion/observation. Use the following format:
+   act("action description")
+   assert("observation description")
+
+5. Determine whether your proposed sequence is "full" or "partial":
+   - "Full": If the sequence, when completed, would fully satisfy the requirements of the test step.
+   - "Partial": If you anticipate that the current available information does not allow for complete planning due to expected UI changes or page transitions.
+
+6. Output your response in the following format:
+   <sequence_type>full|partial</sequence_type>
+   <act_assert_sequence>
+   [Your Act and Assert statements here, one per line]
+   </act_assert_sequence>
+   <reasoning>
+   [Explain your reasoning for the sequence and its classification as full or partial]
+   </reasoning>
+
+Remember:
+- Be as specific and detailed as possible in your Act and Assert statements.
+- Consider the context provided by the accomplished steps and browser command history.
+- If the sequence is "partial," focus on the immediate actions and assertions that can be made with the current information.
+
+Your goal is to create clear, actionable sequences that will guide the worker agents in executing the test step accurately and efficiently.

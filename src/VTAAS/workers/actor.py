@@ -1,7 +1,7 @@
 import asyncio
 from uuid import uuid4
 
-from VTAAS.schemas.verdict import Status, StepVerdict
+from VTAAS.schemas.verdict import Status, WorkerVerdict
 from VTAAS.workers.browser import Browser
 
 from ..schemas.worker import BaseWorker
@@ -24,13 +24,13 @@ class Actor(BaseWorker):
         # self.can_modify = config.can_modify
         logger.info(f"Actor {self.id} initialized with query: {self.query}")
 
-    async def process(self) -> StepVerdict:
+    async def process(self) -> WorkerVerdict:
         """Process the given data asynchronously."""
         logger.info(f"Actor {self.id} processing data")
 
         # Simulate some async work for now
         await asyncio.sleep(0.1)
 
-        verdict = StepVerdict(status=Status.PASS, explaination="see that later")
+        verdict = WorkerVerdict(status=Status.PASS, explaination="see that later")
 
         return verdict

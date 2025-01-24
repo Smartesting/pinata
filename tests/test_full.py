@@ -12,7 +12,7 @@ async def test_one_TC():
     # Get test cases in different ways
     test_case = test_collection.get_test_case_by_id("28")
 
-    await orchestrator.process_TestCase(test_case)
+    _ = await orchestrator.process_TestCase(test_case)
     # Initialize workers based on a specific task
     # await orchestrator.initialize_workers(
     #     context="Processing a large dataset of customer transactions",

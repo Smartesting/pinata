@@ -1,4 +1,4 @@
-from typing import Any, Literal, NotRequired, TypeAlias, TypeVar, TypedDict, final
+from typing import Literal, NotRequired, TypeAlias, TypeVar, TypedDict, cast, final
 from uuid import uuid4
 import playwright.async_api as pw
 from urllib.parse import urlparse
@@ -31,7 +31,12 @@ class ScreenshotResult(TypedDict):
     error: NotRequired[str]
 
 
-class MarkResult(TypedDict):
+class Mark(TypedDict):
+    mark: str
+    element: str
+
+
+class MarkLocatorResult(TypedDict):
     locator: NotRequired[pw.Locator]
     error: NotRequired[str]
 
@@ -263,7 +268,7 @@ class Browser:
         except Exception as e:
             error_msg = str(e)
             if "did not find some options" in error_msg:
-                available_options = await locator.evaluate("""
+                available_options: list[str] = await locator.evaluate("""
                     (element) => {
                         if (element instanceof HTMLSelectElement) {
                             return Array.from(element.options).map(option => option.value);
@@ -296,16 +301,19 @@ class Browser:
         _ = await self.page.wait_for_function(
             "() => typeof window.markPage === 'function'"
         )
-        return await self.page.evaluate("window.markPage()")
+        await self.page.evaluate("window.markPage()")
 
-    async def get_marks(self) -> list[str]:
-        return await self.page.evaluate("""async () => {
+    async def get_marks(self) -> list[Mark]:
+        return cast(
+            list[Mark],
+            await self.page.evaluate("""async () => {
           const marks = []
           document.querySelectorAll('[data-mark]').forEach((e) => {
             marks.push({ mark: e.getAttribute('data-mark'), element: window.elementToHtmlString(e) })
           })
           return marks
-        }""")
+        }"""),
+        )
 
     async def get_html_element_from_locator(self, locator: pw.Locator) -> str:
         _ = await self.page.wait_for_function(
@@ -329,7 +337,7 @@ class Browser:
         if self._browser:
             await self._browser.close()
 
-    async def _resolve_mark(self, mark: str) -> MarkResult:
+    async def _resolve_mark(self, mark: str) -> MarkLocatorResult:
         """
         Resolve a mark to a Playwright locator
         """
@@ -345,7 +353,9 @@ class Browser:
 
     async def _get_viewport_data(self) -> ViewportData:
         """Get viewport related data"""
-        return await self.page.evaluate("""
+        return cast(
+            ViewportData,
+            await self.page.evaluate("""
             () => ({
                 scrollX: window.scrollX,
                 scrollY: window.scrollY,
@@ -354,7 +364,8 @@ class Browser:
                 pageWidth: document.documentElement.scrollWidth,
                 pageHeight: document.documentElement.scrollHeight
             })
-        """)
+        """),
+        )
 
     @staticmethod
     def _is_valid_url(url: str) -> bool:

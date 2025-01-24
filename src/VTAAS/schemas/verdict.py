@@ -16,10 +16,10 @@ class BaseVerdict(BaseModel):
     explaination: str | None
 
 
-class StepVerdict(BaseVerdict): ...
+class WorkerVerdict(BaseVerdict): ...
 
 
 class CaseVerdict(BaseVerdict): ...
 
 
-Verdict = Union[StepVerdict, CaseVerdict]
+Verdict = Union[WorkerVerdict, CaseVerdict]

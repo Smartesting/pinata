@@ -1,5 +1,5 @@
 import ast
-from VTAAS.schemas.verdict import StepVerdict
+from VTAAS.schemas.verdict import WorkerVerdict
 from openai import OpenAIError, AsyncOpenAI
 
 from ..schemas.worker import BaseWorker
@@ -66,7 +66,7 @@ class LLMClient:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
-    async def get_step_verdict(self, request: LLMRequest) -> StepVerdict:
+    async def get_step_verdict(self, request: LLMRequest) -> WorkerVerdict:
         """Get verdict for step case from the LLM. Used by Observer Workers"""
         try:
             response = await self.aclient.beta.chat.completions.parse(
@@ -81,11 +81,11 @@ class LLMClient:
                         "content": f"{request.prompt}\nscreenshot: {request.screenshot}",
                     },
                 ],
-                response_format=StepVerdict,
+                response_format=WorkerVerdict,
             )
 
             # Parse and validate response
-            llm_response: StepVerdict = StepVerdict.model_validate(
+            llm_response: WorkerVerdict = WorkerVerdict.model_validate(
                 ast.literal_eval(response.choices[0].message.content)
             )
 
