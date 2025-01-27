@@ -1,8 +1,15 @@
+from enum import Enum
 from VTAAS.schemas.verdict import WorkerVerdict
 from pydantic import BaseModel, Field
 from .worker import (
-    BaseWorker,
+    Worker,
+    WorkerConfig,
 )
+
+
+class SequenceType(Enum):
+    full = 1
+    partial = 2
 
 
 class LLMRequest(BaseModel):
@@ -17,7 +24,11 @@ class LLMRequest(BaseModel):
 class LLMWorkerResponse(BaseModel):
     """Schema for the response received from LLM."""
 
-    workers: list[BaseWorker]
+    current_step_analysis: str
+    screenshot_analysis: str
+    previous_actions_analysis: str
+    workers: list[WorkerConfig]
+    sequence_type: SequenceType
 
 
 class LLMVerdictResponse(BaseModel):

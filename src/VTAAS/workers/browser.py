@@ -286,16 +286,13 @@ class Browser:
 
             return "The label does not seem to match a <select> element. Maybe it is a styled DIV?"
 
-    async def screenshot(self) -> ScreenshotResult:
+    async def screenshot(self) -> bytes:
         try:
-            screenshotBuffer = await self.page.screenshot()
-            return {
-                "screenshot": screenshotBuffer,
-            }
+            return await self.page.screenshot()
 
         except Exception as e:
             logger.error(f"Screenshot error: {str(e)}")
-            return {"error": "An error happened while taking screenshot"}
+            return b""
 
     async def mark_page(self):
         _ = await self.page.wait_for_function(

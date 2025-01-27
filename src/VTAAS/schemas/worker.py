@@ -1,13 +1,15 @@
 from enum import Enum
 from typing import TypedDict
-from pydantic import BaseModel, Field
+from uuid import uuid4
+
+from VTAAS.workers.browser import Browser
 from ..schemas.verdict import WorkerVerdict
-import abc
+from abc import ABC, abstractmethod
 
 
 class WorkerType(str, Enum):
-    ACTOR = "actor"
-    OBSERVER = "observer"
+    ACTOR = "act"
+    ASSERTOR = "assert"
 
 
 class WorkerStatus(str, Enum):
@@ -20,14 +22,14 @@ class WorkerConfig(TypedDict):
     query: str
 
 
-class BaseWorker(BaseModel):
-    """Base worker schema with common attributes."""
+class Worker(ABC):
+    """Abstract worker with common attributes."""
 
-    type: WorkerType
-    status: WorkerStatus = Field(default=WorkerStatus.ACTIVE)
+    def __init__(self, query: str, browser: Browser):
+        self.status: WorkerStatus = WorkerStatus.ACTIVE
+        self.query: str = query
+        self.id: str = uuid4().hex
+        self.browser: Browser = browser
 
-    @abc.abstractmethod
+    @abstractmethod
     async def process(self) -> WorkerVerdict: ...
-
-    # id: str = Field(default_factory=lambda: uuid4().hex)
-    query: str  # = Field(..., description="Task description or query to be executed")

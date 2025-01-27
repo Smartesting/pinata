@@ -13,7 +13,7 @@ def mock_llm_client(mocker) -> LLMClient:
     )
     mock_instance: LLMClient = cast(LLMClient, mocked_class.return_value)
 
-    mock_instance.get_worker_configs = Mock()
+    mock_instance.plan_for_step = Mock()
     mock_instance.get_step_verdict = Mock()
     # mock_instance.get_worker_configs.return_value = [...]
     # mock_instance.get_step_verdict.return_value = ...
@@ -22,14 +22,14 @@ def mock_llm_client(mocker) -> LLMClient:
 
 
 @pytest.fixture
-def orchestrator(mock_llm_client: LLMClient) -> Orchestrator:
+def empty_orchestrator(mock_llm_client: LLMClient) -> Orchestrator:
     return Orchestrator()
 
 
 @pytest.mark.asyncio
-async def test_main_prompt(orchestrator: Orchestrator):
+async def test_main_prompt(empty_orchestrator: Orchestrator):
     """Test main prompt builds itself"""
-    prompt = orchestrator._get_user_prompt(1)
+    prompt = empty_orchestrator._get_user_prompt(1)
     test_case = "blablabla"
     action = "Login as superuser/trial"
     assertion = "Logged in as admin"

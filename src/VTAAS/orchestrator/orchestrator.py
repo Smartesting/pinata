@@ -4,8 +4,8 @@ from ..workers.browser import Browser
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..workers.actor import Actor
-from ..workers.observer import Observer
-from ..schemas.worker import BaseWorker, WorkerStatus, WorkerType
+from ..workers.observer import Assertor
+from ..schemas.worker import Worker, WorkerConfig, WorkerStatus, WorkerType
 from ..schemas.llm import LLMRequest
 
 logger = get_logger(__name__)
@@ -15,10 +15,10 @@ class Orchestrator:
     """Orchestrator class to manage actors and observers."""
 
     def __init__(self):
-        self.workers: list[BaseWorker] = []
-        self.active_workers: list[BaseWorker] = []
+        self.workers: list[Worker] = []
+        self.active_workers: list[Worker] = []
         self.llm_client: LLMClient = LLMClient()
-        self.browser: Browser = Browser()
+        self._browser: Browser | None = None
         self.test_case: TestCase | None = None
         self.worker_reports: dict[str, list[str]] = {}
         self.worker_counter: dict[str, int] = {"actor": 0, "observer": 0}
@@ -39,65 +39,37 @@ class Orchestrator:
 
         logger.info(f"Processing {test_case.name}")
         self.test_case = test_case
-        url = "http://wwww.vtaas-browser.com"
+        url = "http://www.vtaas-benchmark.com:9999/"
+        self._browser = await Browser.create(timeout=3500, headless=True)
         _ = await self.browser.goto(url)
         # Iterating over all actions and assertions till the end of the TC
         # First iteration of VTAAS allows only one shot for each tuple action + assertion
         results: list[WorkerVerdict] = []
         for i in range(len(test_case)):
             # action, assertion = test_case.get_step(i)
-            screenshot = b""
-            screenshotResult = await self.browser.screenshot()
-            if "screenshot" in screenshotResult:
-                screenshot = screenshotResult["screenshot"]
+            screenshot = await self.browser.screenshot()
 
-            await self.initialize_workers(
+            await self.plan(
                 self.get_main_prompt(i),
                 screenshot,
             )
 
-            results = await self.process()
+            results = await self.execute()
 
         if all(verdict.status == Status.PASS for verdict in results):
             return CaseVerdict(status=Status.PASS, explaination=None)
         else:
             return CaseVerdict(status=Status.FAIL, explaination=None)
 
-        # Placeholder for the call to the LLM to give a verdict for the case:
-        #
-        #
-        #
-
-    async def initialize_workers(
-        self, prompt: tuple[str, str], screenshot: bytes | None = None
-    ):
-        """Planning for the test step: initialise workers based on LLM call."""
+    async def plan(self, prompt: tuple[str, str], screenshot: bytes | None = None):
+        """Planning for the test step: spawn workers based on LLM call."""
         request = LLMRequest(prompt=prompt, screenshot=screenshot)
-
-        # Get worker configurations from LLM
-        worker_configs = await self.llm_client.get_worker_configs(request)
-
-        # Spawn workers based on configurations
+        worker_configs = await self.llm_client.plan_for_step(request)
         for config in worker_configs:
             _ = self.spawn_worker(config)
-
         logger.info(f"Initialized {len(self.active_workers)} new workers")
 
-    def spawn_worker(self, config: BaseWorker) -> BaseWorker:
-        """Spawn a new worker based on the provided configuration."""
-        worker: BaseWorker
-        match config.type:
-            case WorkerType.ACTOR:
-                worker = Actor(config, self.browser)
-                self.workers.append(worker)
-                self.active_workers.append(worker)
-            case WorkerType.OBSERVER:
-                worker = Observer(config, self.browser, self.llm_client)
-                self.workers.append(worker)
-                self.active_workers.append(worker)
-        return worker
-
-    async def process(self) -> list[WorkerVerdict]:
+    async def execute(self) -> list[WorkerVerdict]:
         """
         Process only active workers and retire them after processing.
         """
@@ -109,8 +81,24 @@ class Orchestrator:
             self.active_workers.remove(worker)
         return results
 
+    def spawn_worker(self, config: WorkerConfig) -> Worker:
+        """Spawn a new worker based on the provided configuration."""
+        worker: Worker
+        match config["type"]:
+            case WorkerType.ACTOR:
+                worker = Actor(config["query"], self.browser)
+                self.workers.append(worker)
+                self.active_workers.append(worker)
+            case WorkerType.ASSERTOR:
+                worker = Assertor(config["query"], self.browser)
+                self.workers.append(worker)
+                self.active_workers.append(worker)
+        return worker
+
     def _get_system_prompt(self) -> str:
-        with open("system_prompt.txt", "r", encoding="utf-8") as prompt_file:
+        with open(
+            "./src/VTAAS/orchestrator/system_prompt.txt", "r", encoding="utf-8"
+        ) as prompt_file:
             prompt_template = prompt_file.read()
         return prompt_template
 
@@ -119,7 +107,6 @@ class Orchestrator:
             "./src/VTAAS/orchestrator/prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
             prompt_template = prompt_file.read()
-
         test_case = "blablabla"
         action = "Login as superuser/trial"
         assertion = "Logged in as admin"
@@ -127,3 +114,12 @@ class Orchestrator:
         return prompt_template.format(
             test_case=test_case, current_step=test_step, history=history
         )
+
+    @property
+    def browser(self) -> Browser:
+        """Get the browser instance, ensuring it is initialized"""
+        if self._browser is None:
+            raise RuntimeError(
+                "Browser has not been initialized yet. Do Browser.create(name)."
+            )
+        return self._browser

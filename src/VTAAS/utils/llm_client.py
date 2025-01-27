@@ -1,12 +1,10 @@
 import ast
 import re
-from typing import Any
 from VTAAS.schemas.verdict import WorkerVerdict
 from openai import OpenAIError, AsyncOpenAI
 
-from VTAAS.workers.actor import Actor
 
-from ..schemas.worker import BaseWorker, WorkerConfig, WorkerType
+from ..schemas.worker import Worker, WorkerConfig, WorkerType
 from ..schemas.llm import LLMRequest, LLMWorkerResponse
 
 # from ..schemas.worker_schemas import ActorWorker, ObserverWorker
@@ -34,7 +32,7 @@ class LLMClient:
             logger.fatal(e, exc_info=True)
             sys.exit(1)
 
-    async def get_worker_configs(self, request: LLMRequest) -> list[BaseWorker]:
+    async def plan_for_step(self, request: LLMRequest) -> list[WorkerConfig]:
         """Get worker configurations from LLM."""
         try:
             response = await self.aclient.beta.chat.completions.parse(
@@ -43,22 +41,23 @@ class LLMClient:
                     {
                         "role": "system",
                         "content": request.prompt[0],
-                    },  # TODO: Put system prompt in orchestrator
+                    },
                     {
                         "role": "user",
                         "content": request.prompt[1],
                     },
                 ],
-                # response_format=LLMWorkerResponse,
+                response_format=LLMWorkerResponse,
             )
 
             # logger.info(
             #     f"Received {response.choices[0].message.content} worker configurations from LLM"
             # )
+            print(f"Model response:\n{response.choices[0].message.content}")
 
             # Parse and validate response
             llm_response = LLMWorkerResponse.model_validate(
-                ast.literal_eval(response.choices[0].message.content)
+                ast.literal_eval(response.choices[0].message.content or "")
             )
 
             logger.info(
@@ -70,7 +69,7 @@ class LLMClient:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
-    def _extract_worker_sequence(self, response: str) -> list[Any]:
+    def _extract_worker_sequence(self, response: str) -> list[WorkerConfig]:
         xml_pattern = r"<act_assert_sequence>(.*?)</act_assert_sequence>"
         match = re.search(xml_pattern, response, re.DOTALL)
         if match:
@@ -88,7 +87,7 @@ class LLMClient:
                 match = re.search(assert_pattern, w, re.DOTALL)
                 if match:
                     workers.append(
-                        WorkerConfig(type=WorkerType.OBSERVER, query=match.group(1))
+                        WorkerConfig(type=WorkerType.ASSERTOR, query=match.group(1))
                     )
             return workers
         return []
@@ -113,7 +112,7 @@ class LLMClient:
 
             # Parse and validate response
             llm_response: WorkerVerdict = WorkerVerdict.model_validate(
-                ast.literal_eval(response.choices[0].message.content)
+                ast.literal_eval(response.choices[0].message.content or "")
             )
 
             logger.info(f"Received status {llm_response.status}")

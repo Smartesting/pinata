@@ -1,10 +1,13 @@
 import asyncio
+from typing import final, override
 from uuid import uuid4
 
+from VTAAS.schemas.llm import LLMRequest
 from VTAAS.schemas.verdict import Status, WorkerVerdict
+from VTAAS.utils.llm_client import LLMClient
 from VTAAS.workers.browser import Browser
 
-from ..schemas.worker import BaseWorker
+from ..schemas.worker import Worker, WorkerType
 from ..utils.logger import get_logger
 
 # from ..schemas.worker_schemas import ActorWorker
@@ -12,25 +15,34 @@ from ..utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class Actor(BaseWorker):
+@final
+class Actor(Worker):
     """Actor implementation."""
 
-    def __init__(self, config: BaseWorker, browser: Browser):
-        self.config = config
-        self.id = uuid4().hex
-        self.query = config.query
-        self.browser = browser
+    def __init__(self, query: str, browser: Browser):
+        super().__init__(query, browser)
+        self.type = WorkerType.ACTOR
+        self.llm_client = LLMClient()
         # self.priority = config.action_priority
         # self.can_modify = config.can_modify
         logger.info(f"Actor {self.id} initialized with query: {self.query}")
 
+    @override
     async def process(self) -> WorkerVerdict:
         """Process the given data asynchronously."""
-        logger.info(f"Actor {self.id} processing data")
+        screenshot = await self.browser.screenshot()
 
-        # Simulate some async work for now
-        await asyncio.sleep(0.1)
+        request = LLMRequest(
+            prompt=(self.system_prompt, self.query), screenshot=screenshot
+        )
+        _ = await self.llm_client.get_step_verdict(request)
+        logger.info(f"Actor {self.id} processing data")
+        verdict: WorkerVerdict = await self.llm_client.get_step_verdict(request)
 
         verdict = WorkerVerdict(status=Status.PASS, explaination="see that later")
 
         return verdict
+
+    @property
+    def system_prompt(self) -> str:
+        return "You are part of a multi-agent systems. Your role is to perform the task on a web application"

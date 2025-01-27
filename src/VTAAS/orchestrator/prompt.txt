@@ -8,13 +8,13 @@ You are provided with the following inputs:
 {current_step}
 </current_step>
 
-<browser_command_history>
+<history>
 {history}
-</browser_command_history>
+</history>
 
-Perform your task by following these instructions:
+Perform the current test step by following these instructions:
 
-1. Analyze the current test step carefully. Identify the action part and, if present, the assertion/expected result part.
+1. Analyze the test step carefully. Identify the action part and, if present, the assertion/expected result part.
 
 2. Analyze the screenshot of the web application. Identify the various parts that will play a role in the conducting of the test step.
 
@@ -28,13 +28,13 @@ Perform your task by following these instructions:
    - "Full": If the sequence, when completed, would fully satisfy the requirements of the test step.
    - "Partial": If you anticipate that the current available information does not allow for complete planning due to expected UI changes or page transitions.
 
-6. Output your response in the following format:
+6. Output your response with respect to the expected format.
    <sequence_type>full|partial</sequence_type>
    <act_assert_sequence>
-   [Your Act and Assert statements here, one per line]
+   [your act and assert statements here, one per line]
    </act_assert_sequence>
    <reasoning>
-   [Explain your reasoning for the sequence and its classification as full or partial]
+   [explain your reasoning for the sequence and its classification as full or partial]
    </reasoning>
 
 Remember:
