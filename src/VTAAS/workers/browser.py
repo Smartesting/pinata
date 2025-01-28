@@ -28,8 +28,8 @@ class ViewportData(TypedDict):
     pageHeight: int
 
 
-class BrowserParams(TypedDict):
-    playwright: pw.Playwright | None
+class BrowserParams(TypedDict, total=False):
+    playwright: pw.Playwright
     headless: bool
     timeout: int
     id: str
@@ -55,21 +55,20 @@ class Browser:
     """Playwright based Browser"""
 
     def __init__(self, **kwargs: Unpack[BrowserParams]):
-        default_browser_params: BrowserParams = {
+        default_params: BrowserParams = {
             "headless": True,
             "timeout": 3000,
             "id": uuid4().hex,
-            "playwright": None,
         }
         custom_params = kwargs
         if custom_params and set(custom_params.keys()).issubset(
-            set(default_browser_params.keys())
+            set(default_params.keys())
         ):
-            default_browser_params.update(custom_params)
+            default_params.update(custom_params)
         elif custom_params:
             raise ValueError("unknown browser parameter(s) received")
 
-        self._params = default_browser_params
+        self._params = default_params
         self._scrolled_to: int = -1
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
@@ -78,7 +77,7 @@ class Browser:
 
     async def initialize(self) -> None:
         """Initialize the browser instance"""
-        if self._params["playwright"] is None:
+        if "playwright" not in self._params:
             self._params["playwright"] = await pw.async_playwright().start()
         self._browser = await self._params["playwright"].chromium.launch(
             headless=self._params["headless"],
