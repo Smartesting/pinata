@@ -1,4 +1,13 @@
-from typing import Literal, NotRequired, TypeAlias, TypeVar, TypedDict, cast, final
+from typing import (
+    Literal,
+    NotRequired,
+    TypeAlias,
+    TypeVar,
+    TypedDict,
+    Unpack,
+    cast,
+    final,
+)
 from uuid import uuid4
 import playwright.async_api as pw
 from urllib.parse import urlparse
@@ -45,7 +54,7 @@ class MarkLocatorResult(TypedDict):
 class Browser:
     """Playwright based Browser"""
 
-    def __init__(self, **kwargs: BrowserParams):
+    def __init__(self, **kwargs: Unpack[BrowserParams]):
         default_browser_params: BrowserParams = {
             "headless": True,
             "timeout": 3000,
@@ -93,7 +102,7 @@ class Browser:
         )
 
     @classmethod
-    async def create(cls: type[T], **kwargs: BrowserParams) -> T:
+    async def create(cls: type[T], **kwargs: Unpack[BrowserParams]) -> T:
         """Class method to create and initialize a Browser instance"""
         instance = cls(**kwargs)
         await instance.initialize()

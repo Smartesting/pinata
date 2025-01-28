@@ -39,9 +39,8 @@ class Orchestrator:
 
         logger.info(f"Processing {test_case.name}")
         self.test_case = test_case
-        url = "http://www.vtaas-benchmark.com:9999/"
         self._browser = await Browser.create(timeout=3500, headless=True)
-        _ = await self.browser.goto(url)
+        _ = await self.browser.goto(self.test_case.url)
         # Iterating over all actions and assertions till the end of the TC
         # First iteration of VTAAS allows only one shot for each tuple action + assertion
         results: list[WorkerResult] = []
