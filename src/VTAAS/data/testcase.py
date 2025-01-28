@@ -1,10 +1,10 @@
 import csv
-from typing import List, Dict
 import os
 import re
+from typing import override
 
 from VTAAS.utils.logger import get_logger
-from typing import Sequence
+from collections.abc import Sequence
 
 
 logger = get_logger(__name__)
@@ -12,13 +12,13 @@ logger = get_logger(__name__)
 
 class TestCase:
     def __init__(
-        self, full_name: str, actions: List[str], expected_results: List[str], url: str
+        self, full_name: str, actions: list[str], expected_results: list[str], url: str
     ):
-        self.full_name = full_name
+        self.full_name: str = full_name
         self._parse_full_name(full_name)
-        self.actions = actions
-        self.expected_results = expected_results
-        self.url = url
+        self.actions: list[str] = actions
+        self.expected_results: list[str] = expected_results
+        self.url: str = url
         self.steps: Sequence[tuple[str, str]] = list(
             zip(self.actions, self.expected_results)
         )
@@ -37,15 +37,17 @@ class TestCase:
         match = re.match(pattern, full_name)
 
         if match:
-            self.id = match.group(1)
-            self.type = match.group(2)
-            self.name = match.group(3).strip()
+            self.id: str = match.group(1)
+            self.type: str = match.group(2)
+            self.name: str = match.group(3).strip()
         else:
             raise ValueError(f"Invalid test case format: {full_name}")
 
+    @override
     def __str__(self) -> str:
         return f"TC-{self.id}-{self.type}: {self.name}"
 
+    @override
     def __repr__(self) -> str:
         return (
             f"TestCase(id='{self.id}', type='{self.type}', "
@@ -64,13 +66,13 @@ class TestCase:
 
 class TestCaseCollection:
     # To ensure it is ignored by pytest
-    __test__ = False
+    __test__: bool = False
 
     def __init__(self, file_path: str, url: str):
-        self.file_path = file_path
-        self.name = self._get_file_name()
-        self.url = url
-        self.test_cases: List[TestCase] = []
+        self.file_path: str = file_path
+        self.name: str = self._get_file_name()
+        self.url: str = url
+        self.test_cases: list[TestCase] = []
         self._parse_file()
         logger.info(self)
 
@@ -91,7 +93,7 @@ class TestCaseCollection:
         test_cases_dict = self._parse_csv()
         self._create_test_cases(test_cases_dict)
 
-    def _parse_csv(self) -> Dict:
+    def _parse_csv(self) -> dict[str, dict[str, list[str]]]:
         """
         Parses the CSV file and returns a dictionary of test cases.
         """
@@ -127,7 +129,9 @@ class TestCaseCollection:
 
         return test_cases
 
-    def _create_test_cases(self, test_cases_dict: Dict) -> None:
+    def _create_test_cases(
+        self, test_cases_dict: dict[str, dict[str, list[str]]]
+    ) -> None:
         """
         Creates TestCase instances from the parsed dictionary.
         """
@@ -149,7 +153,7 @@ class TestCaseCollection:
                 return test_case
         raise ValueError(f"No test case found with ID: {id}")
 
-    def get_test_cases_by_type(self, type: str) -> List[TestCase]:
+    def get_test_cases_by_type(self, type: str) -> list[TestCase]:
         """
         Returns all test cases of a specific type.
         """
@@ -170,5 +174,6 @@ class TestCaseCollection:
     def __len__(self):
         return len(self.test_cases)
 
+    @override
     def __str__(self) -> str:
         return f"TestCaseCollection: {self.name} ({len(self)} test cases)"
