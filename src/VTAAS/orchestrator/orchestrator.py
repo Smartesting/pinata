@@ -1,5 +1,5 @@
 from ..data.testcase import TestCase
-from ..schemas.verdict import CaseVerdict, Status, WorkerVerdict
+from ..schemas.verdict import TestCaseVerdict, Status, WorkerResult
 from ..workers.browser import Browser
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
@@ -31,10 +31,10 @@ class Orchestrator:
         user_prompt = self._get_user_prompt(test_step_index, history)
         return (system_prompt, user_prompt)
 
-    def get_verdict_prompt(self, result: list[WorkerVerdict], assertion: str) -> str:
+    def get_verdict_prompt(self, result: list[WorkerResult], assertion: str) -> str:
         return f"action: {result}, assertion: {assertion}"
 
-    async def process_TestCase(self, test_case: TestCase) -> CaseVerdict:
+    async def process_TestCase(self, test_case: TestCase) -> TestCaseVerdict:
         """Manages the main execution loop for the given Test Case."""
 
         logger.info(f"Processing {test_case.name}")
@@ -44,7 +44,7 @@ class Orchestrator:
         _ = await self.browser.goto(url)
         # Iterating over all actions and assertions till the end of the TC
         # First iteration of VTAAS allows only one shot for each tuple action + assertion
-        results: list[WorkerVerdict] = []
+        results: list[WorkerResult] = []
         for i in range(len(test_case)):
             # action, assertion = test_case.get_step(i)
             screenshot = await self.browser.screenshot()
@@ -57,9 +57,9 @@ class Orchestrator:
             results = await self.execute()
 
         if all(verdict.status == Status.PASS for verdict in results):
-            return CaseVerdict(status=Status.PASS, explaination=None)
+            return TestCaseVerdict(status=Status.PASS, explaination=None)
         else:
-            return CaseVerdict(status=Status.FAIL, explaination=None)
+            return TestCaseVerdict(status=Status.FAIL, explaination=None)
 
     async def plan(self, prompt: tuple[str, str], screenshot: bytes | None = None):
         """Planning for the test step: spawn workers based on LLM call."""
@@ -69,11 +69,11 @@ class Orchestrator:
             _ = self.spawn_worker(config)
         logger.info(f"Initialized {len(self.active_workers)} new workers")
 
-    async def execute(self) -> list[WorkerVerdict]:
+    async def execute(self) -> list[WorkerResult]:
         """
         Process only active workers and retire them after processing.
         """
-        results: list[WorkerVerdict] = []
+        results: list[WorkerResult] = []
         for worker in self.active_workers[:]:  # Create a copy of the list to iterate
             result = await worker.process()
             results.append(result)

@@ -28,15 +28,6 @@ Perform the current test step by following these instructions:
    - "Full": If the sequence, when completed, would fully satisfy the requirements of the test step.
    - "Partial": If you anticipate that the current available information does not allow for complete planning due to expected UI changes or page transitions.
 
-6. Output your response with respect to the expected format.
-   <sequence_type>full|partial</sequence_type>
-   <act_assert_sequence>
-   [your act and assert statements here, one per line]
-   </act_assert_sequence>
-   <reasoning>
-   [explain your reasoning for the sequence and its classification as full or partial]
-   </reasoning>
-
 Remember:
 - Be as specific and detailed as possible in your Act and Assert statements.
 - Consider the context provided by the accomplished steps and browser command history.

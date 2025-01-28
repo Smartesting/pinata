@@ -24,11 +24,18 @@ Closely examine the screenshot to check the status of every part of the webpage 
 Finally, based on your analysis, in conjunction with human web browsing habits and the logic of web design, decide on the following action. And clearly outline which element in the webpage users will operate with as the first next target element, its detailed location, and the corresponding operation. Analyze the test case in its entirety, it happens that later steps hold information on how to perform the current step (especially in terms of test data).
 
 Here is the list of available commands for the Actor to be used as next action:
-click
-fill
-select
-goto
-scroll
-hover
-
-
+- click --> Click on an element given its label. Arg:
+  - label (int): Numerical label related to the element on the screenshot
+- goto --> Navigate a browser to the specified URL. Args:
+  - url (string): URL to navigate to
+- fill --> Type text into an input element given its label. Args:
+  - label (int): Numerical label related to the element on the screenshot
+  - value (string): Text to be typed into the element
+- select --> Select the provided options in a select element given its label. Args:
+  - label (int): Numerical label related to the element on the screenshot
+  - options (string): Options to select
+- scroll --> Scroll the page up or down. Arg:
+  - direction (up_down): Direction to scroll
+- finish --> Signal that you have finished all your objectives:
+  - status (success_fail): Whether the worker completed the task or failed
+  - reason (string, optional): Explain precisely why the task could no be completed

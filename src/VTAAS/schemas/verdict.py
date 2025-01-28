@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union
+
 from pydantic import BaseModel, Field
 
 
@@ -9,17 +9,17 @@ class Status(str, Enum):
     UNK = "unknown"
 
 
-class BaseVerdict(BaseModel):
-    """Verdict schema"""
+class BaseResult(BaseModel):
+    """Base result schema"""
 
-    status: Status = Field(..., description="Status of the verdict")
+    status: Status = Field(..., description="Status of the result")
     explaination: str | None
 
 
-class WorkerVerdict(BaseVerdict): ...
+class WorkerResult(BaseResult): ...
 
 
-class CaseVerdict(BaseVerdict): ...
+class TestCaseVerdict(BaseResult): ...
 
 
-Verdict = Union[WorkerVerdict, CaseVerdict]
+Verdict = WorkerResult | TestCaseVerdict

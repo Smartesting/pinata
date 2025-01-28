@@ -3,7 +3,7 @@ from typing import TypedDict
 from uuid import uuid4
 
 from VTAAS.workers.browser import Browser
-from ..schemas.verdict import WorkerVerdict
+from ..schemas.verdict import WorkerResult
 from abc import ABC, abstractmethod
 
 
@@ -22,6 +22,16 @@ class WorkerConfig(TypedDict):
     query: str
 
 
+class Command(TypedDict):
+    name: str
+    args: list[tuple[str, int | str]]
+
+
+class AssertionChecking(TypedDict):
+    observation: str
+    verification: str
+
+
 class Worker(ABC):
     """Abstract worker with common attributes."""
 
@@ -32,4 +42,7 @@ class Worker(ABC):
         self.browser: Browser = browser
 
     @abstractmethod
-    async def process(self) -> WorkerVerdict: ...
+    async def process(self) -> WorkerResult: ...
+
+    @abstractmethod
+    def get_prompt(self) -> tuple[str, str]: ...

@@ -1,8 +1,11 @@
 from enum import Enum
-from VTAAS.schemas.verdict import WorkerVerdict
+
 from pydantic import BaseModel, Field
+
+from ..schemas.verdict import Verdict, WorkerResult
 from .worker import (
-    Worker,
+    AssertionChecking,
+    Command,
     WorkerConfig,
 )
 
@@ -21,7 +24,7 @@ class LLMRequest(BaseModel):
     screenshot: bytes | None = Field(..., description="Main objective to be achieved")
 
 
-class LLMWorkerResponse(BaseModel):
+class LLMTestStepPlanResponse(BaseModel):
     """Schema for the response received from LLM."""
 
     current_step_analysis: str
@@ -31,7 +34,24 @@ class LLMWorkerResponse(BaseModel):
     sequence_type: SequenceType
 
 
+class LLMActResponse(BaseModel):
+    """Schema for the response received from LLM."""
+
+    current_webpage_identification: str
+    screenshot_analysis: str
+    next_action: str
+    command: Command
+
+
+class LLMAssertResponse(BaseModel):
+    """Schema for the response received from LLM."""
+
+    page_description: str
+    assertion_checking: AssertionChecking
+    verdict: Verdict
+
+
 class LLMVerdictResponse(BaseModel):
     """Schema for the response received from LLM."""
 
-    verdict: WorkerVerdict
+    verdict: WorkerResult

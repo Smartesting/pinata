@@ -1,11 +1,11 @@
 import ast
 import re
-from VTAAS.schemas.verdict import WorkerVerdict
+from VTAAS.schemas.verdict import WorkerResult
 from openai import OpenAIError, AsyncOpenAI
 
 
 from ..schemas.worker import Worker, WorkerConfig, WorkerType
-from ..schemas.llm import LLMRequest, LLMWorkerResponse
+from ..schemas.llm import LLMRequest, LLMTestStepPlanResponse
 
 # from ..schemas.worker_schemas import ActorWorker, ObserverWorker
 from ..utils.logger import get_logger
@@ -47,7 +47,7 @@ class LLMClient:
                         "content": request.prompt[1],
                     },
                 ],
-                response_format=LLMWorkerResponse,
+                response_format=LLMTestStepPlanResponse,
             )
 
             # logger.info(
@@ -56,7 +56,44 @@ class LLMClient:
             print(f"Model response:\n{response.choices[0].message.content}")
 
             # Parse and validate response
-            llm_response = LLMWorkerResponse.model_validate(
+            llm_response = LLMTestStepPlanResponse.model_validate(
+                ast.literal_eval(response.choices[0].message.content or "")
+            )
+
+            logger.info(
+                f"Received {len(llm_response.workers)} worker configurations from LLM"
+            )
+            return llm_response.workers
+
+        except Exception as e:
+            logger.error(f"Error getting worker configurations: {str(e)}")
+            raise
+
+    async def act(self, request: LLMRequest) -> list[WorkerConfig]:
+        """Get worker configurations from LLM."""
+        try:
+            response = await self.aclient.beta.chat.completions.parse(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": request.prompt[0],
+                    },
+                    {
+                        "role": "user",
+                        "content": request.prompt[1],
+                    },
+                ],
+                response_format=LLMTestStepPlanResponse,
+            )
+
+            # logger.info(
+            #     f"Received {response.choices[0].message.content} worker configurations from LLM"
+            # )
+            print(f"Model response:\n{response.choices[0].message.content}")
+
+            # Parse and validate response
+            llm_response = LLMTestStepPlanResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
 
@@ -92,7 +129,7 @@ class LLMClient:
             return workers
         return []
 
-    async def get_step_verdict(self, request: LLMRequest) -> WorkerVerdict:
+    async def get_step_verdict(self, request: LLMRequest) -> WorkerResult:
         """Get verdict for step case from the LLM. Used by Observer Workers"""
         try:
             response = await self.aclient.beta.chat.completions.parse(
@@ -107,11 +144,11 @@ class LLMClient:
                         "content": f"{request.prompt}\nscreenshot: {request.screenshot}",
                     },
                 ],
-                response_format=WorkerVerdict,
+                response_format=WorkerResult,
             )
 
             # Parse and validate response
-            llm_response: WorkerVerdict = WorkerVerdict.model_validate(
+            llm_response: WorkerResult = WorkerResult.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
 
