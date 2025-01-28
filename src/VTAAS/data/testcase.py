@@ -11,11 +11,14 @@ logger = get_logger(__name__)
 
 
 class TestCase:
-    def __init__(self, full_name: str, actions: List[str], expected_results: List[str]):
+    def __init__(
+        self, full_name: str, actions: List[str], expected_results: List[str], url: str
+    ):
         self.full_name = full_name
         self._parse_full_name(full_name)
         self.actions = actions
         self.expected_results = expected_results
+        self.url = url
         self.steps: Sequence[tuple[str, str]] = list(
             zip(self.actions, self.expected_results)
         )
@@ -63,9 +66,10 @@ class TestCaseCollection:
     # To ensure it is ignored by pytest
     __test__ = False
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, url: str):
         self.file_path = file_path
         self.name = self._get_file_name()
+        self.url = url
         self.test_cases: List[TestCase] = []
         self._parse_file()
         logger.info(self)
@@ -132,6 +136,7 @@ class TestCaseCollection:
                 full_name=full_name,
                 actions=data["actions"],
                 expected_results=data["expected_results"],
+                url=self.url,
             )
             self.test_cases.append(test_case)
 
