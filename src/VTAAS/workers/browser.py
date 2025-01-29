@@ -29,7 +29,7 @@ class ViewportData(TypedDict):
 
 
 class BrowserParams(TypedDict, total=False):
-    playwright: pw.Playwright
+    playwright: pw.Playwright | None
     headless: bool
     timeout: int
     id: str
@@ -59,6 +59,7 @@ class Browser:
             "headless": True,
             "timeout": 3000,
             "id": uuid4().hex,
+            "playwright": None,
         }
         custom_params = kwargs
         if custom_params and set(custom_params.keys()).issubset(
@@ -77,7 +78,7 @@ class Browser:
 
     async def initialize(self) -> None:
         """Initialize the browser instance"""
-        if "playwright" not in self._params:
+        if not self._params["playwright"]:
             self._params["playwright"] = await pw.async_playwright().start()
         self._browser = await self._params["playwright"].chromium.launch(
             headless=self._params["headless"],

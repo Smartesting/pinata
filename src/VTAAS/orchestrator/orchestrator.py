@@ -4,7 +4,7 @@ from ..workers.browser import Browser
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..workers.actor import Actor
-from ..workers.observer import Assertor
+from ..workers.assertor import Assertor
 from ..schemas.worker import Worker, WorkerConfig, WorkerStatus, WorkerType
 from ..schemas.llm import LLMRequest
 
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 
 class Orchestrator:
-    """Orchestrator class to manage actors and observers."""
+    """Orchestrator class to manage actors and assertors."""
 
     def __init__(self):
         self.workers: list[Worker] = []
@@ -21,7 +21,7 @@ class Orchestrator:
         self._browser: Browser | None = None
         self.test_case: TestCase | None = None
         self.worker_reports: dict[str, list[str]] = {}
-        self.worker_counter: dict[str, int] = {"actor": 0, "observer": 0}
+        self.worker_counter: dict[str, int] = {"actor": 0, "assertor": 0}
         logger.info("Orchestrator initialized")
 
     def get_main_prompt(
@@ -62,7 +62,7 @@ class Orchestrator:
 
     async def plan(self, prompt: tuple[str, str], screenshot: bytes | None = None):
         """Planning for the test step: spawn workers based on LLM call."""
-        request = LLMRequest(prompt=prompt, screenshot=screenshot)
+        request = LLMRequest(conversation=prompt, screenshot=screenshot)
         worker_configs = await self.llm_client.plan_for_step(request)
         for config in worker_configs:
             _ = self.spawn_worker(config)
@@ -74,7 +74,7 @@ class Orchestrator:
         """
         results: list[WorkerResult] = []
         for worker in self.active_workers[:]:  # Create a copy of the list to iterate
-            result = await worker.process()
+            result = await worker.process(input=None)
             results.append(result)
             worker.status = WorkerStatus.RETIRED
             self.active_workers.remove(worker)
@@ -83,13 +83,13 @@ class Orchestrator:
     def spawn_worker(self, config: WorkerConfig) -> Worker:
         """Spawn a new worker based on the provided configuration."""
         worker: Worker
-        match config["type"]:
+        match config.type:
             case WorkerType.ACTOR:
-                worker = Actor(config["query"], self.browser)
+                worker = Actor(config.query, self.browser)
                 self.workers.append(worker)
                 self.active_workers.append(worker)
             case WorkerType.ASSERTOR:
-                worker = Assertor(config["query"], self.browser)
+                worker = Assertor(config.query, self.browser)
                 self.workers.append(worker)
                 self.active_workers.append(worker)
         return worker

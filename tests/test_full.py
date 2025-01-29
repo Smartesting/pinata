@@ -4,13 +4,13 @@ from VTAAS.orchestrator import Orchestrator
 
 
 @pytest.mark.asyncio
+@pytest.mark.llm
 async def test_one_TC():
-    # Create orchestrator
+    test_collection = TestCaseCollection(
+        "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
+    )
+    test_case = test_collection.get_test_case_by_id("1")
     orchestrator = Orchestrator()
-
-    test_collection = TestCaseCollection("data/OneStop_Passing.csv")
-    # Get test cases in different ways
-    test_case = test_collection.get_test_case_by_id("28")
 
     _ = await orchestrator.process_TestCase(test_case)
     # Initialize workers based on a specific task

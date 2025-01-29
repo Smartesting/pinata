@@ -1,13 +1,32 @@
 import ast
+import base64
+from collections.abc import Iterable
 import re
+from typing import final
+
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionContentPartImageParam,
+    ChatCompletionContentPartParam,
+    ChatCompletionContentPartTextParam,
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
+from openai.types.chat.chat_completion_content_part_image_param import ImageURL
 from VTAAS.schemas.verdict import WorkerResult
 from openai import OpenAIError, AsyncOpenAI
 
 
-from ..schemas.worker import Worker, WorkerConfig, WorkerType
-from ..schemas.llm import LLMRequest, LLMTestStepPlanResponse
+from ..schemas.worker import Message, MessageRole, WorkerConfig, WorkerType
+from ..schemas.llm import (
+    LLMActResponse,
+    LLMAssertResponse,
+    LLMRequest,
+    LLMTestStepPlanResponse,
+)
 
-# from ..schemas.worker_schemas import ActorWorker, ObserverWorker
+# from ..schemas.worker_schemas import ActorWorker, AssertorWorker
 from ..utils.logger import get_logger
 from ..utils.config import load_config
 import sys
@@ -15,6 +34,7 @@ import sys
 logger = get_logger(__name__)
 
 
+@final
 class LLMClient:
     """Skeleton LLM client."""
 
@@ -40,11 +60,11 @@ class LLMClient:
                 messages=[
                     {
                         "role": "system",
-                        "content": request.prompt[0],
+                        "content": request.conversation[0],
                     },
                     {
                         "role": "user",
-                        "content": request.prompt[1],
+                        "content": request.conversation[1],
                     },
                 ],
                 response_format=LLMTestStepPlanResponse,
@@ -69,7 +89,35 @@ class LLMClient:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
-    async def act(self, request: LLMRequest) -> list[WorkerConfig]:
+    async def act(self, conversation: list[Message]) -> LLMActResponse:
+        """Get worker configurations from LLM."""
+        try:
+            response = await self.aclient.beta.chat.completions.parse(
+                model="gpt-4o-mini",
+                messages=self._to_openai_messages(conversation),
+                response_format=LLMActResponse,
+            )
+
+            # logger.info(
+            #     f"Received {response.choices[0].message.content} worker configurations from LLM"
+            # )
+            logger.debug(f"Act response:\n{response.choices[0].message.content}")
+            if not response.choices[0].message.content:
+                raise Exception("LLM response is empty")
+
+            # Parse and validate response
+            llm_response = LLMActResponse.model_validate(
+                ast.literal_eval(response.choices[0].message.content or "")
+            )
+
+            logger.info(f"Received command {llm_response.command.name} from Actor LLM")
+            return llm_response
+
+        except Exception as e:
+            logger.error(f"Error getting worker configurations: {str(e)}")
+            raise
+
+    async def assert_(self, request: LLMRequest) -> LLMAssertResponse:
         """Get worker configurations from LLM."""
         try:
             response = await self.aclient.beta.chat.completions.parse(
@@ -77,30 +125,31 @@ class LLMClient:
                 messages=[
                     {
                         "role": "system",
-                        "content": request.prompt[0],
+                        "content": request.conversation[0],
                     },
                     {
                         "role": "user",
-                        "content": request.prompt[1],
+                        "content": request.conversation[1],
                     },
                 ],
-                response_format=LLMTestStepPlanResponse,
+                response_format=LLMAssertResponse,
             )
 
             # logger.info(
             #     f"Received {response.choices[0].message.content} worker configurations from LLM"
             # )
-            print(f"Model response:\n{response.choices[0].message.content}")
+            print(f"Assert response:\n{response.choices[0].message.content}")
+            if not response.choices[0].message.content:
+                logger.info("Assert LLM Response is empty")
+                raise Exception("Assert LLM response is empty")
 
             # Parse and validate response
-            llm_response = LLMTestStepPlanResponse.model_validate(
+            llm_response = LLMAssertResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
 
-            logger.info(
-                f"Received {len(llm_response.workers)} worker configurations from LLM"
-            )
-            return llm_response.workers
+            logger.info(f"Received assertion {llm_response.verdict} from Actor LLM")
+            return llm_response
 
         except Exception as e:
             logger.error(f"Error getting worker configurations: {str(e)}")
@@ -130,7 +179,7 @@ class LLMClient:
         return []
 
     async def get_step_verdict(self, request: LLMRequest) -> WorkerResult:
-        """Get verdict for step case from the LLM. Used by Observer Workers"""
+        """Get verdict for step case from the LLM. Used by Assertor Workers"""
         try:
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-mini-2024-07-18",
@@ -138,10 +187,10 @@ class LLMClient:
                     {
                         "role": "system",
                         "content": "super system prompt",
-                    },  # TODO: Put system prompt in observer
+                    },  # TODO: Put system prompt in assertor
                     {
                         "role": "user",
-                        "content": f"{request.prompt}\nscreenshot: {request.screenshot}",
+                        "content": f"{request.conversation}\nscreenshot: {request.screenshot}",
                     },
                 ],
                 response_format=WorkerResult,
@@ -158,3 +207,45 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
+
+    def _to_openai_messages(
+        self, conversation: list[Message]
+    ) -> Iterable[ChatCompletionMessageParam]:
+        messages: Iterable[ChatCompletionMessageParam] = []
+        for msg in conversation:
+            match msg.role:
+                case MessageRole.System:
+                    messages.append(
+                        ChatCompletionSystemMessageParam(
+                            role="system", content=msg.content
+                        )
+                    )
+                case MessageRole.Assistant:
+                    messages.append(
+                        ChatCompletionAssistantMessageParam(
+                            role="assistant", content=msg.content
+                        )
+                    )
+                case MessageRole.User:
+                    content: Iterable[ChatCompletionContentPartParam] = []
+                    content.append(
+                        ChatCompletionContentPartTextParam(
+                            type="text", text=msg.content
+                        )
+                    )
+                    if msg.screenshot:
+                        base64_screenshot = base64.b64encode(msg.screenshot)
+                        print(f"start of screenshot: {base64_screenshot[:50]}")
+                        image = ImageURL(
+                            url=f"data:image/png;base64,{base64_screenshot}",
+                            detail="high",
+                        )
+                        content.append(
+                            ChatCompletionContentPartImageParam(
+                                image_url=image, type="image_url"
+                            )
+                        )
+                    messages.append(
+                        ChatCompletionUserMessageParam(content=content, role="user")
+                    )
+        return messages

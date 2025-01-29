@@ -9,6 +9,7 @@ dependencies = [
     "ipykernel>=6.29.5",
     "openai>=1.59.8",
     "playwright>=1.49.1",
+    "pydantic>=2.10.5",
     "pytest-playwright>=0.6.2",
     "python-dotenv>=1.0.1",
     "requests>=2.32.3",
@@ -100,4 +101,7 @@ dev = [
     "pytest-mock>=3.14.0",
 ]
 [tool.pytest.ini_options]
+markers = [
+    "llm: tests that call LLMs (deselect with '-m \"not llm\"')",
+]
 pythonpath = "src"

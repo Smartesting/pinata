@@ -13,7 +13,7 @@ async def test_plannif():
     load_config()
     llm_client = LLMClient()
     request = LLMRequest(
-        prompt=("You are the best tester", "fill in the blanks"), screenshot=b""
+        conversation=("You are the best tester", "fill in the blanks"), screenshot=b""
     )
     plan = llm_client.plan_for_step(request)
     print(plan)

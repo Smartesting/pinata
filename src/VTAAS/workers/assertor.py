@@ -5,7 +5,7 @@ from ..schemas.verdict import Status, WorkerResult
 from ..utils.llm_client import LLMClient
 from ..workers.browser import Browser
 from ..utils.logger import get_logger
-from ..schemas.worker import Worker, WorkerType
+from ..schemas.worker import Worker, WorkerInput, WorkerType
 
 logger = get_logger(__name__)
 
@@ -23,11 +23,11 @@ class Assertor(Worker):
         logger.info(f"Actor {self.id} initialized with query: {self.query}")
 
     @override
-    async def process(self) -> WorkerResult:
+    async def process(self, input: WorkerInput) -> WorkerResult:
         """Process the given data asynchronously."""
         screenshot = await self.browser.screenshot()
         request = LLMRequest(
-            prompt=(self.system_prompt, self.query), screenshot=screenshot
+            conversation=(self.system_prompt, self.query), screenshot=screenshot
         )
         _ = await self.llm_client.get_step_verdict(request)
         logger.info(f"Actor {self.id} processing data")

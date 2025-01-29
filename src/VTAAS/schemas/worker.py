@@ -1,10 +1,26 @@
 from enum import Enum
-from typing import TypedDict
 from uuid import uuid4
+
+from pydantic import BaseModel
 
 from VTAAS.workers.browser import Browser
 from ..schemas.verdict import WorkerResult
 from abc import ABC, abstractmethod
+
+
+class MessageRole(str, Enum):
+    System = "system"
+    User = "user"
+    Assistant = "assistant"
+
+
+class Message(BaseModel):
+    role: MessageRole
+    content: str
+    screenshot: bytes | None = None
+
+    class Config:
+        use_enum_values: bool = True
 
 
 class WorkerType(str, Enum):
@@ -17,17 +33,27 @@ class WorkerStatus(str, Enum):
     RETIRED = "retired"
 
 
-class WorkerConfig(TypedDict):
+class WorkerConfig(BaseModel):
     type: WorkerType
     query: str
 
 
-class Command(TypedDict):
-    name: str
-    args: list[tuple[str, int | str]]
+class ActorInput(BaseModel):
+    test_case: str
+    test_step: tuple[str, str]
+    history: str | None
 
 
-class AssertionChecking(TypedDict):
+class AssertorInput(BaseModel):
+    test_case: str
+    test_step: str
+    history: str
+
+
+WorkerInput = ActorInput | AssertorInput
+
+
+class AssertionChecking(BaseModel):
     observation: str
     verification: str
 
@@ -40,9 +66,7 @@ class Worker(ABC):
         self.query: str = query
         self.id: str = uuid4().hex
         self.browser: Browser = browser
+        self.conversation: list[Message] = []
 
     @abstractmethod
-    async def process(self) -> WorkerResult: ...
-
-    @abstractmethod
-    def get_prompt(self) -> tuple[str, str]: ...
+    async def process(self, input: WorkerInput) -> WorkerResult: ...

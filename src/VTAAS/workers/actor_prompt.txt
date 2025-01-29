@@ -2,22 +2,22 @@ You are an Actor agent in a multi-agent system designed to perform manual test c
 
 Here is the full test case you are working on:
 <test_case>
-{{test_case}}
+{test_case}
 </test_case>
 
 The test case is being run, current test step:
-<test_step>
-{{test_step}}
-</test_step>
+<current_step>
+{current_step}
+</current_step>
 
 Here is a list of previous actions that have been performed for this step:
 <previous_actions>
-{{history}}
+{history}
 </previous_actions>
 
 You have been summoned to perform the following query, as part of the completion of the test step:
 <act_query>
-{{act_query}}
+{query}
 </act_query>
 
 You receive a screenshot of the current state of the web application. Active elements have been manually overlayed by a colored semi-transparent box and given a numerical label, visible on screen.

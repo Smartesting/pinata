@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -16,10 +17,21 @@ class BaseResult(BaseModel):
     explaination: str | None
 
 
-class WorkerResult(BaseResult): ...
+class ActorAction(TypedDict):
+    action: str
+    outcome: str
+
+
+class AssertorResult(BaseResult):
+    synthesis: str
+
+
+class ActorResult(BaseResult):
+    actions: list[ActorAction]
 
 
 class TestCaseVerdict(BaseResult): ...
 
 
+WorkerResult = ActorResult | AssertorResult
 Verdict = WorkerResult | TestCaseVerdict

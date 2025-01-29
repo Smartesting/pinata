@@ -14,7 +14,7 @@ class TestCase:
     def __init__(
         self, full_name: str, actions: list[str], expected_results: list[str], url: str
     ):
-        self.full_name: str = full_name
+        self._full_name: str = full_name
         self._parse_full_name(full_name)
         self.actions: list[str] = actions
         self.expected_results: list[str] = expected_results
@@ -23,9 +23,15 @@ class TestCase:
             zip(self.actions, self.expected_results)
         )
 
-    def get_step(self, n: int):
-        """Get the nth step in the test step"""
-        return self.steps[n]
+    def get_step(self, n: int) -> tuple[str, str]:
+        """Get the nth step in the test case"""
+        if n < 1:
+            raise ValueError("Steps start at 1")
+        if n > len(self.steps):
+            raise ValueError(
+                f"Step #{n} does not exist. Test case length: {len(self.steps)}"
+            )
+        return self.steps[n - 1]
 
     def _parse_full_name(self, full_name: str) -> None:
         """
@@ -43,9 +49,19 @@ class TestCase:
         else:
             raise ValueError(f"Invalid test case format: {full_name}")
 
+    @property
+    def full_name(self) -> str:
+        return f"TC-{self.id}-{self.type}: {self.name}"
+
     @override
     def __str__(self) -> str:
-        return f"TC-{self.id}-{self.type}: {self.name}"
+        output = self.full_name
+        for idx, test_step in enumerate(self):
+            output += "\n"
+            output += f"{idx + 1}. {test_step[0]}"
+            if test_step[1]:
+                output += f"; Assertion: {test_step[0]}"
+        return output
 
     @override
     def __repr__(self) -> str:
