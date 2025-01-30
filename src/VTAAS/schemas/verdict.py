@@ -14,7 +14,7 @@ class BaseResult(BaseModel):
     """Base result schema"""
 
     status: Status = Field(..., description="Status of the result")
-    explaination: str | None
+    explaination: str | None = None
 
 
 class ActorAction(TypedDict):

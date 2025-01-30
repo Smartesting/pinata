@@ -101,7 +101,7 @@ class LLMClient:
             # logger.info(
             #     f"Received {response.choices[0].message.content} worker configurations from LLM"
             # )
-            logger.debug(f"Act response:\n{response.choices[0].message.content}")
+            logger.info(f"Act response:\n{response.choices[0].message.content}")
             if not response.choices[0].message.content:
                 raise Exception("LLM response is empty")
 
@@ -234,8 +234,9 @@ class LLMClient:
                         )
                     )
                     if msg.screenshot:
-                        base64_screenshot = base64.b64encode(msg.screenshot)
-                        print(f"start of screenshot: {base64_screenshot[:50]}")
+                        base64_screenshot = str(
+                            base64.b64encode(msg.screenshot), "utf-8"
+                        )
                         image = ImageURL(
                             url=f"data:image/png;base64,{base64_screenshot}",
                             detail="high",
