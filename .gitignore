@@ -21,3 +21,4 @@ wheels/
 *.egg
 .pytest_cache/
 .vscode
+screenshots/

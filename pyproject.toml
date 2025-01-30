@@ -8,6 +8,7 @@ dependencies = [
     "asyncio>=3.4.3",
     "ipykernel>=6.29.5",
     "openai>=1.59.8",
+    "pillow>=11.1.0",
     "playwright>=1.49.1",
     "pydantic>=2.10.5",
     "pytest-playwright>=0.6.2",

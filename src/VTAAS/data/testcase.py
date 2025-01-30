@@ -56,7 +56,7 @@ class TestCase:
     @override
     def __str__(self) -> str:
         output = self.full_name
-        for idx, test_step in enumerate(self):
+        for idx, test_step in enumerate(self.steps):
             output += "\n"
             output += f"{idx + 1}. {test_step[0]}"
             if test_step[1]:

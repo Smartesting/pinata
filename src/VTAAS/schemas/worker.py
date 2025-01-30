@@ -17,7 +17,7 @@ class MessageRole(str, Enum):
 class Message(BaseModel):
     role: MessageRole
     content: str
-    screenshot: bytes | None = None
+    screenshot: list[bytes] | None = None
 
     class Config:
         use_enum_values: bool = True
@@ -46,8 +46,8 @@ class ActorInput(BaseModel):
 
 class AssertorInput(BaseModel):
     test_case: str
-    test_step: str
-    history: str
+    test_step: tuple[str, str]
+    history: str | None
 
 
 WorkerInput = ActorInput | AssertorInput
@@ -60,6 +60,8 @@ class AssertionChecking(BaseModel):
 
 class Worker(ABC):
     """Abstract worker with common attributes."""
+
+    type: WorkerType
 
     def __init__(self, query: str, browser: Browser):
         self.status: WorkerStatus = WorkerStatus.ACTIVE

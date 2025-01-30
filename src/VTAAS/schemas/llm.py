@@ -4,17 +4,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-from ..schemas.verdict import Status, Verdict, WorkerResult
+from ..schemas.verdict import AssertionVerdict, Status, WorkerResult
 from .worker import (
     AssertionChecking,
-    Message,
     WorkerConfig,
 )
 
 
-class SequenceType(Enum):
-    full = 1
-    partial = 2
+class SequenceType(str, Enum):
+    full = "full"
+    partial = "partial"
 
 
 class LLMRequest(BaseModel):
@@ -34,6 +33,35 @@ class LLMTestStepPlanResponse(BaseModel):
     previous_actions_analysis: str
     workers: list[WorkerConfig]
     sequence_type: SequenceType
+
+
+class LLMTestStepFollowUpResponse(BaseModel):
+    """Schema for the response received from LLM."""
+
+    workers_analysis: str
+    last_screenshot_analysis: str
+    workers: list[WorkerConfig]
+    sequence_type: SequenceType
+
+
+class LLMTestSequencePart(BaseModel):
+    workers: list[WorkerConfig]
+    sequence_type: SequenceType
+
+
+class RecoverDecision(str, Enum):
+    try_again = "try new plan"
+    stop = "assign verdict"
+
+
+class LLMTestStepRecoverResponse(BaseModel):
+    """Schema for the response received from LLM."""
+
+    workers_analysis: str
+    recovery: str
+    decision: RecoverDecision
+    plan: LLMTestSequencePart = None
+    # status: Status = None
 
 
 class ClickCommand(BaseModel):
@@ -88,13 +116,21 @@ class LLMActResponse(BaseModel):
     next_action: str
     command: Command
 
+    def get_cot(self) -> str:
+        data = self.model_dump_json(exclude={"command"})
+        return str(data)
+
 
 class LLMAssertResponse(BaseModel):
     """Schema for the response received from LLM."""
 
     page_description: str
     assertion_checking: AssertionChecking
-    verdict: Verdict
+    verdict: AssertionVerdict
+
+    def get_cot(self) -> str:
+        data = self.model_dump_json()
+        return str(data)
 
 
 class LLMVerdictResponse(BaseModel):

@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 from typing import (
     Literal,
     NotRequired,
@@ -33,6 +35,7 @@ class BrowserParams(TypedDict, total=False):
     headless: bool
     timeout: int
     id: str
+    save_screenshot: bool
 
 
 class ScreenshotResult(TypedDict):
@@ -60,6 +63,7 @@ class Browser:
             "timeout": 3000,
             "id": uuid4().hex,
             "playwright": None,
+            "save_screenshot": False,
         }
         custom_params = kwargs
         if custom_params and set(custom_params.keys()).issubset(
@@ -297,11 +301,21 @@ class Browser:
 
     async def screenshot(self) -> bytes:
         try:
-            return await self.page.screenshot()
+            screenshot = await self.page.screenshot()
+            if self._params["save_screenshot"]:
+                self._save_screenshot(screenshot)
+            return screenshot
 
         except Exception as e:
             logger.error(f"Screenshot error: {str(e)}")
             return b""
+
+    def _save_screenshot(self, screenshot: bytes):
+        os.makedirs("screenshots", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"screenshots/{self.id}_{timestamp}.png"
+        with open(filename, "wb") as f:
+            _ = f.write(screenshot)
 
     async def mark_page(self):
         _ = await self.page.wait_for_function(

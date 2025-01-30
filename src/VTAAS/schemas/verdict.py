@@ -16,22 +16,38 @@ class BaseResult(BaseModel):
     status: Status = Field(..., description="Status of the result")
     explaination: str | None = None
 
+    class Config:
+        use_enum_values: bool = True
 
-class ActorAction(TypedDict):
+
+class WorkerBaseResult(BaseModel):
+    """Worker Base result schema"""
+
+    query: str
+    status: Status = Field(..., description="Status of the result")
+    explaination: str | None = None
+    screenshot: bytes
+
+
+class ActorAction(BaseModel):
     action: str
-    outcome: str
+    chain_of_thought: str
 
 
-class AssertorResult(BaseResult):
-    synthesis: str
-
-
-class ActorResult(BaseResult):
+class ActorResult(WorkerBaseResult):
     actions: list[ActorAction]
+
+
+class AssertorResult(WorkerBaseResult):
+    synthesis: str
 
 
 class TestCaseVerdict(BaseResult): ...
 
 
 WorkerResult = ActorResult | AssertorResult
-Verdict = WorkerResult | TestCaseVerdict
+
+
+class AssertionVerdict(BaseModel):
+    status: Status = Field(..., description="Verdict Status")
+    discrepancies: str = None  # noqa

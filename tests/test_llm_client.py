@@ -15,7 +15,7 @@ async def test_plannif():
     request = LLMRequest(
         conversation=("You are the best tester", "fill in the blanks"), screenshot=b""
     )
-    plan = llm_client.plan_for_step(request)
+    plan = llm_client.plan_step(request)
     print(plan)
 
 

@@ -1,4 +1,8 @@
+from datetime import datetime
+import os
 from typing import TypeGuard, final, override
+
+from VTAAS.utils.banner import add_banner
 
 from ..schemas.llm import (
     ClickCommand,
@@ -9,7 +13,7 @@ from ..schemas.llm import (
     ScrollCommand,
     SelectCommand,
 )
-from ..schemas.verdict import ActorAction, ActorResult, WorkerResult
+from ..schemas.verdict import ActorAction, ActorResult, Status, WorkerResult
 from ..utils.llm_client import LLMClient
 from ..workers.browser import Browser
 from ..schemas.worker import (
@@ -29,14 +33,13 @@ logger = get_logger(__name__)
 class Actor(Worker):
     """The Actor receives an ACT query and issues browser commands to perform the query"""
 
-    def __init__(self, query: str, browser: Browser):
+    def __init__(self, query: str, browser: Browser, max_rounds: int = 4):
         super().__init__(query, browser)
         self.type = WorkerType.ACTOR
         self.llm_client = LLMClient()
         self.actions: list[ActorAction] = []
         self.query = query
-        # self.priority = config.action_priority
-        # self.can_modify = config.can_modify
+        self.max_rounds = max_rounds
         logger.info(f"Actor {self.id} initialized with query: {self.query}")
 
     @override
@@ -48,7 +51,9 @@ class Actor(Worker):
         screenshot = await self.browser.screenshot()
         self._setup_conversation(input, screenshot)
         verdict: WorkerResult | None = None
-        while verdict is None:
+        round = 0
+        while verdict is None and round < self.max_rounds:
+            round += 1
             response = await self.llm_client.act(self.conversation)
             command = response.command
             if command.name == "finish":
@@ -56,8 +61,11 @@ class Actor(Worker):
                     f"Actor {self.id} Status {command.status}: {command.reason or 'No reason'}"
                 )
                 verdict = ActorResult(
+                    query=self.query,
                     status=command.status,
                     actions=self.actions,
+                    # screenshot=screenshot,
+                    screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
                     explaination=command.reason,
                 )
                 continue
@@ -69,13 +77,23 @@ class Actor(Worker):
             )
             action = self.command_to_str(command)
             outcome = await self.run_command(command)
-            self.actions.append(ActorAction(action=action, outcome=outcome))
+            self.actions.append(
+                ActorAction(action=action, chain_of_thought=response.get_cot())
+            )
             await self.browser.mark_page()
             screenshot = await self.browser.screenshot()
+            logger.debug(f"Browser responded: {outcome}")
             self.conversation.append(
-                Message(role=MessageRole.User, content=outcome, screenshot=screenshot)
+                Message(role=MessageRole.User, content=outcome, screenshot=[screenshot])
             )
-        return verdict
+        return verdict or ActorResult(
+            query=self.query,
+            status=Status.UNK,
+            actions=self.actions,
+            # screenshot=screenshot,
+            screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
+            explaination="stopped after 3 rounds",
+        )
 
     async def run_command(self, command: Command) -> str:
         match command:
@@ -109,7 +127,7 @@ class Actor(Worker):
 
     @property
     def system_prompt(self) -> str:
-        return "You are part of a multi-agent systems. Your role is to perform the task on a web application"
+        return "You are part of a multi-agent systems. Your role is to perform the provided query on a web application"
 
     def _setup_conversation(self, input: ActorInput, screenshot: bytes):
         self.conversation = [
@@ -117,12 +135,25 @@ class Actor(Worker):
             Message(
                 role=MessageRole.User,
                 content=self._build_user_prompt(input),
-                screenshot=screenshot,
+                screenshot=[screenshot],
             ),
         ]
+        logger.debug(f"User prompt:\n\n{self.conversation[1].content}")
 
     def _is_actor_input(self, input: WorkerInput) -> TypeGuard[ActorInput]:
         return isinstance(input, ActorInput)
+
+    def _add_banner(self, screenshot: bytes, query: str) -> bytes:
+        banner_screenshot = add_banner(screenshot, query)
+        self._save_screenshot(banner_screenshot)
+        return banner_screenshot
+
+    def _save_screenshot(self, screenshot: bytes):
+        os.makedirs("screenshots", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"screenshots/{self.id}_act_{timestamp}.png"
+        with open(filename, "wb") as f:
+            _ = f.write(screenshot)
 
     def _build_user_prompt(self, input: ActorInput) -> str:
         with open(

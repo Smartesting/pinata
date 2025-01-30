@@ -1,18 +1,27 @@
+from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCaseCollection
 from VTAAS.orchestrator import Orchestrator
+from VTAAS.workers.browser import Browser
 
 
 @pytest.mark.asyncio
 @pytest.mark.llm
 async def test_one_TC():
-    test_collection = TestCaseCollection(
-        "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
-    )
-    test_case = test_collection.get_test_case_by_id("1")
-    orchestrator = Orchestrator()
+    async with async_playwright() as p:
+        browser = await Browser.create(
+            id="actor_test_integ_browser",
+            headless=False,
+            playwright=p,
+            save_screenshot=True,
+        )
+        test_collection = TestCaseCollection(
+            "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
+        )
+        test_case = test_collection.get_test_case_by_id("1")
+        orchestrator = Orchestrator(browser)
 
-    _ = await orchestrator.process_TestCase(test_case)
+        _ = await orchestrator.process_testcase(test_case)
     # Initialize workers based on a specific task
     # await orchestrator.initialize_workers(
     #     context="Processing a large dataset of customer transactions",
