@@ -15,7 +15,7 @@ Here is a list of previous actions that have been performed for this step:
 {history}
 </previous_actions>
 
-You have been summoned to perform the following query, as part of the completion of the test step:
+Multiple agents are working alongside you to complete the current test step. It is your turn: you have been summoned to perform the following query:
 <act_query>
 {query}
 </act_query>
@@ -30,8 +30,11 @@ Please follow these steps in order:
 2. Screenshot Details Analysis:
    Closely examine the screenshot to check the status of every part of the webpage. Understand what you can operate with and what has been set or completed. Pay special attention to the effects of previous actions that may not be clearly recorded in the textual history.
 
-3. Next Action:
-   Based on your analysis, the act query, and the full test case, decide on the next action. Consider human web browsing habits and the logic of web design. Clearly outline which element in the webpage users will operate with as the first next target element, its detailed location, and the corresponding operation.
+3. Query progress:
+   Evaluate your progress toward completion of the query, if any, and what remains to be done. Write N/A if it is your first round.
+
+4. Next Action:
+   Based on your analysis, the act query progress, and the work of previous agents, decide on the next action. Consider human web browsing habits and the logic of web design. Clearly outline which element in the webpage users will operate with as the first next target element, its detailed location, and the corresponding operation. Always justify how this action relate to the completion of the query.
 
 Here is the list of available commands for you to use as the next action:
 - click: Click on an element given its label. Arg: label (int)
@@ -42,4 +45,5 @@ Here is the list of available commands for you to use as the next action:
 - finish: Signal that you have finished all your objectives. Args: status (success_fail), reason (string, optional)
 
 If you believe the query has been fulfilled, use the 'finish' command with a 'success' status.
+Do not try to complete the test step, solely focus on the query.
 If you cannot complete the task or if there's an issue, use the 'finish' command with a 'fail' status and provide a reason.

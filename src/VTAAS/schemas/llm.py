@@ -84,6 +84,7 @@ class LLMActResponse(BaseModel):
 
     current_webpage_identification: str
     screenshot_analysis: str
+    query_progress: str
     next_action: str
     command: Command
 
