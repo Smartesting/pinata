@@ -76,13 +76,14 @@ class Actor(Worker):
                 )
             )
             # action = self.command_to_str(command)
-            outcome = await self.run_command(command)
+            outcome = f"Browser response:\n{await self.run_command(command)}"
             self.actions.append(
                 ActorAction(action=outcome, chain_of_thought=response.get_cot())
             )
             await self.browser.mark_page()
             screenshot = await self.browser.screenshot()
-            logger.debug(f"Browser responded: {outcome}")
+            logger.info(outcome)
+            outcome += f'\nIs the task "{self.query}" now complete?'
             self.conversation.append(
                 Message(role=MessageRole.User, content=outcome, screenshot=[screenshot])
             )
