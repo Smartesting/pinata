@@ -47,7 +47,6 @@ class Orchestrator:
         self._exec_context: TestExecutionContext | None = None
         self._followup_prompt: str | None = None
         self._recover_prompt: str | None = None
-        self.history: list[str] = []
         self.worker_reports: dict[str, list[str]] = {}
         self.worker_counter: dict[str, int] = {"actor": 0, "assertor": 0}
         self.conversation: list[Message] = []
@@ -67,13 +66,13 @@ class Orchestrator:
         verdict = BaseResult(status=Status.UNK)
         for idx, test_step in enumerate(test_case):
             exec_context.current_step = test_step
-            exec_context.step_index = idx
+            exec_context.step_index = idx + 1
             verdict = await self.process_step(exec_context)
             if verdict.status != Status.PASS:
                 break
-            step_str = f"{idx}. action: {test_step[0]}, assertion: {test_step[1]}"
+            step_str = f"{exec_context.step_index}. {test_step[0]} -> {test_step[1]}"
             done_steps.append(step_str)
-            self.history = done_steps.copy()
+            exec_context.history = done_steps.copy()
 
         if verdict.status == Status.PASS:
             return TestCaseVerdict(status=Status.PASS, explaination=None)
@@ -158,20 +157,22 @@ class Orchestrator:
             worker = self.active_workers[0]
             input: WorkerInput = self._prepare_worker_input(exec_context, worker.type)
             result = await worker.process(input=input)
-            self._save_worker_result(result)
+            self._save_worker_result(exec_context, result)
             results.append(result)
             worker.status = WorkerStatus.RETIRED
             self.active_workers.remove(worker)
         self.active_workers.clear()
         return results
 
-    def _save_worker_result(self, result: WorkerResult):
+    def _save_worker_result(
+        self, exec_context: TestExecutionContext, result: WorkerResult
+    ):
         if isinstance(result, ActorResult):
             for action in result.actions:
                 if action:
-                    self.history.append(action.action)
+                    exec_context.history.append(action.action)
         else:
-            self.history.append(f'Verified: "{result.query}"')
+            exec_context.history.append(f'Verified: "{result.query}"')
 
     def _merge_worker_results(self, success: bool, results: list[WorkerResult]):
         outcome: str = "successfully" if success else "but eventually failed"
@@ -216,13 +217,13 @@ class Orchestrator:
                 return ActorInput(
                     test_case=exec_context.test_case.__str__(),
                     test_step=exec_context.current_step,
-                    history=("\n").join(self.history),
+                    history=("\n").join(exec_context.history),
                 )
             case WorkerType.ASSERTOR:
                 return AssertorInput(
                     test_case=exec_context.test_case.__str__(),
                     test_step=exec_context.current_step,
-                    history=("\n").join(self.history),
+                    history=("\n").join(exec_context.history),
                 )
 
     def spawn_worker(self, config: WorkerConfig) -> Worker:
