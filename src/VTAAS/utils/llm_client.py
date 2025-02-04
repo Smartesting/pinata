@@ -51,7 +51,7 @@ class LLMClient:
         try:
             logger.info(f"Init Plan Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o",
+                model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMTestStepPlanResponse,
             )
@@ -78,7 +78,7 @@ class LLMClient:
         try:
             logger.info(f"FollowUp Plan Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o",
+                model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMTestStepFollowUpResponse,
             )
@@ -104,7 +104,7 @@ class LLMClient:
         try:
             logger.info(f"Recover Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o",
+                model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMTestStepRecoverResponse,
             )
@@ -132,7 +132,7 @@ class LLMClient:
         try:
             logger.info(f"Actor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o-2024-11-20",
+                model="gpt-4o-mini",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMActResponse,
             )
@@ -155,7 +155,7 @@ class LLMClient:
         try:
             logger.info(f"Assertor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o-2024-11-20",
+                model="gpt-4o-mini",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMAssertResponse,
             )
