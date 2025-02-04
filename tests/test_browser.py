@@ -137,6 +137,24 @@ def test_is_valid_url(url: str, expected_valid: bool):
 
 
 @pytest.mark.asyncio
+async def test_reload_valid_url(browser: Browser):
+    """Test navigation to a valid URL"""
+    url = "https://www.example.com/"
+    _ = await browser.goto(url)
+    result = await browser.reload()
+    assert result == f"Successfully reloaded url {url}"
+
+
+@pytest.mark.asyncio
+async def test_reload_invalid_url(browser: Browser):
+    """Test navigation to an invalid URL"""
+    url = "not-a-valid-url"
+    _ = await browser.goto(url)
+    result = await browser.reload()
+    assert "Reloaded url about:blank but received" in result
+
+
+@pytest.mark.asyncio
 async def test_vertical_scroll(browser: Browser, dummy_page_path: Path):
     """Test vertical scrolling"""
     with patch.object(browser, "_is_valid_url", return_value=True):

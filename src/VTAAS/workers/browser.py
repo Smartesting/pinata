@@ -155,6 +155,19 @@ class Browser:
             logger.error(f"Navigation error: {str(e)}")
             return f"An error happened while navigating to {url}"
 
+    async def reload(self) -> str:
+        url = self.page.url
+        try:
+            response = await self.page.reload(wait_until="networkidle")
+            if response and response.ok:
+                return f"Successfully reloaded url {url}"
+            else:
+                status = response.status if response else "unknown"
+                return f"Reloaded url {url} but received a {status} status"
+        except Exception as e:
+            logger.error(f"Reload error: {str(e)}")
+            return f"An error happened while reloading url {url}"
+
     async def click(self, mark: str) -> str:
         before_url = self.page.url
         outcome = ""
