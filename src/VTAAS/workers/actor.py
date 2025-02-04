@@ -40,7 +40,7 @@ class Actor(Worker):
         self.actions: list[ActorAction] = []
         self.query = query
         self.max_rounds = max_rounds
-        logger.info(f"Actor {self.id} initialized with query: {self.query}")
+        logger.info(f"Actor {self.id[:8]} initialized with query: {self.query}")
 
     @override
     async def process(self, input: WorkerInput) -> WorkerResult:
@@ -52,19 +52,19 @@ class Actor(Worker):
         self._setup_conversation(input, screenshot)
         verdict: WorkerResult | None = None
         round = 0
+        logger.info(f"Actor {self.id[:8]} processing query '{self.query}'")
         while verdict is None and round < self.max_rounds:
             round += 1
             response = await self.llm_client.act(self.conversation)
             command = response.command
             if command.name == "finish":
                 logger.info(
-                    f"Actor {self.id} Status {command.status}: {command.reason or 'No reason'}"
+                    f'Actor {self.id[:8]} ("{self.query}") is DONE: {command.status} - {command.reason or "No reason"}'
                 )
                 verdict = ActorResult(
                     query=self.query,
                     status=command.status,
                     actions=self.actions,
-                    # screenshot=screenshot,
                     screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
                     explaination=command.reason,
                 )
@@ -75,10 +75,10 @@ class Actor(Worker):
                     content=response.model_dump_json(),
                 )
             )
-            action = self.command_to_str(command)
+            # action = self.command_to_str(command)
             outcome = await self.run_command(command)
             self.actions.append(
-                ActorAction(action=action, chain_of_thought=response.get_cot())
+                ActorAction(action=outcome, chain_of_thought=response.get_cot())
             )
             await self.browser.mark_page()
             screenshot = await self.browser.screenshot()
@@ -90,7 +90,6 @@ class Actor(Worker):
             query=self.query,
             status=Status.UNK,
             actions=self.actions,
-            # screenshot=screenshot,
             screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
             explaination="stopped after 3 rounds",
         )
@@ -107,21 +106,6 @@ class Actor(Worker):
                 return await self.browser.select(str(command.label), command.options)
             case ScrollCommand(name="scroll"):
                 return await self.browser.vertical_scroll(command.direction)
-            case FinishCommand(name="finish"):
-                return ""
-
-    def command_to_str(self, command: Command) -> str:
-        match command:
-            case ClickCommand(name="click"):
-                return f"click on label {command.label}"
-            case GotoCommand(name="goto"):
-                return f"goto {command.url}"
-            case FillCommand(name="fill"):
-                return f"fill {command.value} on label {command.label}"
-            case SelectCommand(name="select"):
-                return f"set option(s) {command.options} for label {command.label}"
-            case ScrollCommand(name="scroll"):
-                return f"scrolled {command.direction}"
             case FinishCommand(name="finish"):
                 return ""
 
@@ -161,11 +145,11 @@ class Actor(Worker):
         ) as prompt_file:
             prompt_template = prompt_file.read()
 
-        current_step = input.test_step[0] + "; " + input.test_step[1]
+        # current_step = input.test_step[0] + "; " + input.test_step[1]
 
         return prompt_template.format(
-            test_case=input.test_case,
-            current_step=current_step,
+            # test_case=input.test_case,
+            # current_step=current_step,
             history=input.history,
             query=self.query,
         )

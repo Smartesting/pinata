@@ -26,7 +26,7 @@ class Assertor(Worker):
         super().__init__(query, browser)
         self.type = WorkerType.ASSERTOR
         self.llm_client = LLMClient()
-        logger.info(f"Assertor {self.id} initialized with query: {self.query}")
+        logger.info(f"Assertor {self.id[:8]} initialized with query: {self.query}")
 
     @override
     async def process(self, input: WorkerInput) -> AssertorResult:
@@ -34,8 +34,8 @@ class Assertor(Worker):
             raise TypeError("Expected input of type AssertorInput")
         screenshot = await self.browser.screenshot()
         self._setup_conversation(input, screenshot)
+        logger.info(f"Assertor {self.id[:8]} processing query '{self.query}'")
         response = await self.llm_client.assert_(self.conversation)
-        logger.info(f"Assertor {self.id} processing query '{self.query}'")
         return AssertorResult(
             query=self.query,
             status=response.verdict.status,
@@ -45,7 +45,7 @@ class Assertor(Worker):
 
     @property
     def system_prompt(self) -> str:
-        return "You are part of a multi-agent systems. Your role is to assert the expected state of a web application"
+        return "You are part of a multi-agent systems. Your role is to assert the expected state of a web application, given a query."
 
     def _setup_conversation(self, input: AssertorInput, screenshot: bytes):
         self.conversation = [

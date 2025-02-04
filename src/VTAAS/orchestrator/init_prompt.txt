@@ -32,5 +32,6 @@ Remember:
 - Be as specific and detailed as possible in your Act and Assert statements.
 - Consider the context provided by the accomplished steps and browser command history.
 - If the sequence is "partial," focus on the immediate actions and assertions that can be made with the current information.
+- Actors should have active objectives implying clicks, fill, gotos, etc. Setting focus is not enough of a task for actors.
 
 Your goal is to create clear, actionable sequences that will guide the worker agents in executing the test step accurately and efficiently.

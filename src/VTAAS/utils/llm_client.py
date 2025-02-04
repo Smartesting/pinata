@@ -14,7 +14,6 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
 )
 from openai.types.chat.chat_completion_content_part_image_param import ImageURL
-from VTAAS.schemas.verdict import WorkerResult
 from openai import OpenAIError, AsyncOpenAI
 
 
@@ -22,7 +21,6 @@ from ..schemas.worker import Message, MessageRole, WorkerConfig, WorkerType
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
-    LLMRequest,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
@@ -42,7 +40,6 @@ class LLMClient:
 
     def __init__(self):
         load_config()
-        logger.info("Connection to OpenAI ...")
         try:
             self.aclient = AsyncOpenAI()
         except OpenAIError as e:
@@ -52,6 +49,7 @@ class LLMClient:
     async def plan_step(self, conversation: list[Message]) -> LLMTestStepPlanResponse:
         """Get list of act/assert workers from LLM."""
         try:
+            logger.info(f"Init Plan Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o",
                 messages=self._to_openai_messages(conversation),
@@ -78,6 +76,7 @@ class LLMClient:
     ) -> LLMTestStepFollowUpResponse:
         """Update list of act/assert workers from LLM."""
         try:
+            logger.info(f"FollowUp Plan Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o",
                 messages=self._to_openai_messages(conversation),
@@ -103,6 +102,7 @@ class LLMClient:
     ) -> LLMTestStepRecoverResponse:
         """Update list of act/assert workers from LLM."""
         try:
+            logger.info(f"Recover Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o",
                 messages=self._to_openai_messages(conversation),
@@ -130,6 +130,7 @@ class LLMClient:
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
         try:
+            logger.info(f"Actor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
@@ -152,6 +153,7 @@ class LLMClient:
     async def assert_(self, conversation: list[Message]) -> LLMAssertResponse:
         """Assertor call"""
         try:
+            logger.info(f"Assertor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),

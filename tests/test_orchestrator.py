@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import cast
+import json
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCase, TestCaseCollection
@@ -163,7 +163,7 @@ async def test_user_prompt(empty_orchestrator: Orchestrator):
     """Test main prompt builds itself"""
     idx = 1
     empty_orchestrator._current_step = ("action 1", "assert 1")
-    prompt = empty_orchestrator._build_user_plan_prompt(idx)
+    prompt = empty_orchestrator._build_user_init_prompt(idx)
     print(empty_orchestrator.current_step)
     print(empty_orchestrator.current_step[0])
     print(empty_orchestrator.current_step[1])
@@ -225,7 +225,7 @@ def test_merge_worker_results_success(empty_orchestrator: Orchestrator):
         synthesis="Everything checks out",
     )
     results = [actor_result, assertor_result]
-    message = empty_orchestrator.merge_worker_results(True, results)
+    message = empty_orchestrator._merge_worker_results(True, results)
 
     expected_header = "The sequence of workers was executed successfully:"
     assert message.content.startswith(expected_header)
@@ -256,7 +256,7 @@ def test_merge_worker_results_failure(empty_orchestrator: Orchestrator):
         actions=[actor_action],
     )
     results: list[WorkerResult] = [actor_result]
-    message = empty_orchestrator.merge_worker_results(False, results)
+    message = empty_orchestrator._merge_worker_results(False, results)
 
     expected_header = "The sequence of workers was executed but eventually failed:"
     assert message.content.startswith(expected_header)
@@ -286,7 +286,9 @@ async def test_integ_step():
         )
         orchestrator = Orchestrator(browser)
         orchestrator._test_case = test_case
+        print(orchestrator._test_case)
         _ = await browser.goto(url)
+        orchestrator._current_step = test_case.get_step(2)
         verdict = await orchestrator.process_step(2)
         print(verdict.model_dump_json())
         assert verdict.status == Status.PASS
