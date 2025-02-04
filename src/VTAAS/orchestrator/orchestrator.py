@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from VTAAS.schemas.llm import SequenceType
 from ..data.testcase import TestCase
 from ..schemas.verdict import (
@@ -27,6 +28,14 @@ from ..schemas.worker import (
 logger = get_logger(__name__)
 
 
+@dataclass
+class TestExecutionContext:
+    test_case: TestCase
+    current_step: tuple[str, str]
+    step_index: int
+    history: list[str] = field(default_factory=list)
+
+
 class Orchestrator:
     """Orchestrator class to manage actors and assertors."""
 
@@ -35,8 +44,7 @@ class Orchestrator:
         self.active_workers: list[Worker] = []
         self.llm_client: LLMClient = LLMClient()
         self._browser: Browser | None = browser
-        self._test_case: TestCase | None = None
-        self._current_step: tuple[str, str] | None = None
+        self._exec_context: TestExecutionContext | None = None
         self._followup_prompt: str | None = None
         self._recover_prompt: str | None = None
         self.history: list[str] = []
@@ -49,15 +57,18 @@ class Orchestrator:
         """Manages the main execution loop for the given Test Case."""
 
         logger.info(f"Processing {test_case.name}")
-        self._test_case = test_case
+        exec_context = TestExecutionContext(
+            test_case=test_case, current_step=test_case.get_step(1), step_index=1
+        )
         if self._browser is None:
             self._browser = await Browser.create(timeout=3500, headless=True)
-        _ = await self.browser.goto(self.test_case.url)
+        _ = await self.browser.goto(exec_context.test_case.url)
         done_steps: list[str] = []
         verdict = BaseResult(status=Status.UNK)
         for idx, test_step in enumerate(test_case):
-            self._current_step = test_step
-            verdict = await self.process_step(idx)
+            exec_context.current_step = test_step
+            exec_context.step_index = idx
+            verdict = await self.process_step(exec_context)
             if verdict.status != Status.PASS:
                 break
             step_str = f"{idx}. action: {test_step[0]}, assertion: {test_step[1]}"
@@ -69,14 +80,14 @@ class Orchestrator:
         else:
             return TestCaseVerdict(status=Status.FAIL, explaination=None)
 
-    async def process_step(self, step_index: int) -> BaseResult:
+    async def process_step(self, exec_context: TestExecutionContext) -> BaseResult:
         screenshot = await self.browser.screenshot()
-        self._setup_conversation(step_index, screenshot)
+        self._setup_conversation(exec_context, screenshot)
         results: list[WorkerResult] = []
         sequence_type = await self.plan_step_init()
         for i in range(4):
-            logger.info(f"step #{step_index}: processing iteration {i}")
-            results = await self.execute_step()
+            logger.info(f"step #{exec_context.step_index}: processing iteration {i}")
+            results = await self.execute_step(exec_context)
             success = not any(verdict.status != Status.PASS for verdict in results)
             if sequence_type == SequenceType.full and success:
                 return BaseResult(status=Status.PASS)
@@ -135,7 +146,9 @@ class Orchestrator:
         logger.info(f"Initialized {len(self.active_workers)} new workers")
         return response.plan.sequence_type
 
-    async def execute_step(self) -> list[WorkerResult]:
+    async def execute_step(
+        self, exec_context: TestExecutionContext
+    ) -> list[WorkerResult]:
         """
         Run active workers and retire them afterwards.
         """
@@ -143,16 +156,16 @@ class Orchestrator:
         result = BaseResult(status=Status.PASS)
         while self.active_workers and result.status == Status.PASS:
             worker = self.active_workers[0]
-            input: WorkerInput = self._prepare_worker_input(worker.type)
+            input: WorkerInput = self._prepare_worker_input(exec_context, worker.type)
             result = await worker.process(input=input)
-            self._historize_worker_result(result)
+            self._save_worker_result(result)
             results.append(result)
             worker.status = WorkerStatus.RETIRED
             self.active_workers.remove(worker)
         self.active_workers.clear()
         return results
 
-    def _historize_worker_result(self, result: WorkerResult):
+    def _save_worker_result(self, result: WorkerResult):
         if isinstance(result, ActorResult):
             for action in result.actions:
                 if action:
@@ -195,18 +208,20 @@ class Orchestrator:
 
         return Message(role=MessageRole.User, content=user_msg, screenshot=screenshots)
 
-    def _prepare_worker_input(self, type: WorkerType) -> WorkerInput:
+    def _prepare_worker_input(
+        self, exec_context: TestExecutionContext, type: WorkerType
+    ) -> WorkerInput:
         match type:
             case WorkerType.ACTOR:
                 return ActorInput(
-                    test_case=self.test_case.__str__(),
-                    test_step=self.current_step,
+                    test_case=exec_context.test_case.__str__(),
+                    test_step=exec_context.current_step,
                     history=("\n").join(self.history),
                 )
             case WorkerType.ASSERTOR:
                 return AssertorInput(
-                    test_case=self.test_case.__str__(),
-                    test_step=self.current_step,
+                    test_case=exec_context.test_case.__str__(),
+                    test_step=exec_context.current_step,
                     history=("\n").join(self.history),
                 )
 
@@ -225,13 +240,16 @@ class Orchestrator:
         return worker
 
     def _setup_conversation(
-        self, test_step_index: int, screenshot: bytes, history: str | None = None
+        self,
+        context: TestExecutionContext,
+        screenshot: bytes,
+        history: str | None = None,
     ):
         self.conversation = [
             Message(role=MessageRole.System, content=self._build_system_prompt()),
             Message(
                 role=MessageRole.User,
-                content=self._build_user_init_prompt(test_step_index, history),
+                content=self._build_user_init_prompt(context, history),
                 screenshot=[screenshot],
             ),
         ]
@@ -245,15 +263,17 @@ class Orchestrator:
         return prompt_template
 
     def _build_user_init_prompt(
-        self, test_step_index: int, history: str | None = None
+        self, exec_context: TestExecutionContext, history: str | None = None
     ) -> str:
         with open(
             "./src/VTAAS/orchestrator/init_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
             prompt_template = prompt_file.read()
-        test_case = self.test_case
-        action, assertion = self.current_step
-        test_step = f"{test_step_index}. action: {action}, assertion: {assertion}"
+        test_case = exec_context.test_case
+        action, assertion = exec_context.current_step
+        test_step = (
+            f"{exec_context.step_index}. action: {action}, assertion: {assertion}"
+        )
         return prompt_template.format(
             test_case=test_case, current_step=test_step, history=history
         )
@@ -266,22 +286,6 @@ class Orchestrator:
                 "Browser has not been initialized yet. Do Browser.create(name)."
             )
         return self._browser
-
-    @property
-    def test_case(self) -> TestCase:
-        """Get the test_case instance, ensuring it is initialized"""
-        if self._test_case is None:
-            raise RuntimeError(
-                "No test case is being processed. Call process_TestCase()."
-            )
-        return self._test_case
-
-    @property
-    def current_step(self) -> tuple[str, str]:
-        """Get the current test step, ensuring it is initialized"""
-        if self._current_step is None:
-            raise RuntimeError("Current test step is not set. Call process_TestCase().")
-        return self._current_step
 
     @property
     def followup_prompt(self) -> str:

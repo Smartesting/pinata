@@ -1,18 +1,17 @@
 from collections.abc import Generator
-import json
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCase, TestCaseCollection
 from VTAAS.orchestrator import Orchestrator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+from VTAAS.orchestrator.orchestrator import TestExecutionContext
 from VTAAS.schemas.llm import LLMTestStepPlanResponse, SequenceType
 from VTAAS.schemas.verdict import (
     ActorAction,
     ActorResult,
     AssertorResult,
     Status,
-    TestCaseVerdict,
     WorkerResult,
 )
 from VTAAS.schemas.worker import MessageRole, WorkerConfig, WorkerType
@@ -51,7 +50,7 @@ def mock_llm_client() -> LLMClient:
 
 
 @pytest.fixture
-def mock_test_case_1() -> TestCase:
+def mock_test_case() -> TestCase:
     mock_instance = MagicMock(
         spec=TestCase,
         id="1",
@@ -67,64 +66,8 @@ def mock_test_case_1() -> TestCase:
     mock_instance.__str__.return_value = (
         "content of test case 1\n1. Action 1 ; Assert 1\n2. Action 2; Assert 2"
     )
+    mock_instance.get_step.return_value = ["Action 1", "Result 1"]
     return mock_instance
-
-
-@pytest.fixture
-def mock_test_case_2() -> TestCase:
-    return MagicMock(
-        spec=TestCase,
-        id="2",
-        type="P",
-        name="Test Case 2",
-        actions=["Action 3", "Action 4", "Action 5"],
-        expected_results=["Result 3", "Result 4", "Result 5"],
-        url="http://example.com",
-        steps=list(
-            zip(
-                ["Action 3", "Action 4", "Action 5"],
-                ["Result 3", "Result 4", "Result 5"],
-            )
-        ),
-    )
-
-
-@pytest.fixture
-def mock_test_case_3() -> TestCase:
-    return MagicMock(
-        spec=TestCase,
-        id="3",
-        type="Q",
-        name="Test Case 3",
-        actions=["Action 6"],
-        expected_results=["Result 6"],
-        url="http://example.com",
-        steps=list(zip(["Action 6"], ["Result 6"])),
-    )
-
-
-@pytest.fixture
-def mock_test_case_collection(
-    mock_test_case_1: TestCase, mock_test_case_2: TestCase, mock_test_case_3: TestCase
-) -> TestCaseCollection:
-    mock_collection = MagicMock(spec=TestCaseCollection)
-    mock_collection.test_cases = [
-        mock_test_case_1,
-        mock_test_case_2,
-        mock_test_case_3,
-    ]
-    mock_collection.get_test_case_by_id.side_effect = lambda id: next(
-        (tc for tc in mock_collection.test_cases if tc.id == id), None
-    )
-    mock_collection.get_test_cases_by_type.side_effect = lambda type: [
-        tc for tc in mock_collection.test_cases if tc.type == type
-    ]
-    mock_collection.get_test_case_by_name.side_effect = lambda name: next(
-        (tc for tc in mock_collection.test_cases if tc.name == name), None
-    )
-    mock_collection.__iter__.side_effect = lambda: iter(mock_collection.test_cases)
-    mock_collection.__len__.side_effect = lambda: len(mock_collection.test_cases)
-    return mock_collection
 
 
 @pytest.fixture
@@ -147,42 +90,38 @@ def mock_browser() -> Browser:
 
 @pytest.fixture
 def empty_orchestrator(
-    mock_llm_client: LLMClient, mock_test_case_1: TestCase
+    mock_llm_client: LLMClient,
 ) -> Orchestrator:
-    orch = Orchestrator()
-    orch._test_case = mock_test_case_1
-    orch._current_step = (
-        mock_test_case_1.actions[1],
-        mock_test_case_1.expected_results[1],
-    )
-    return orch
+    return Orchestrator()
 
 
 @pytest.mark.asyncio
-async def test_user_prompt(empty_orchestrator: Orchestrator):
+async def test_user_prompt(empty_orchestrator: Orchestrator, mock_test_case: TestCase):
     """Test main prompt builds itself"""
-    idx = 1
-    empty_orchestrator._current_step = ("action 1", "assert 1")
-    prompt = empty_orchestrator._build_user_init_prompt(idx)
-    print(empty_orchestrator.current_step)
-    print(empty_orchestrator.current_step[0])
-    print(empty_orchestrator.current_step[1])
-    action, assertion = empty_orchestrator.current_step
-    test_step = f"{idx}. action: {action}, assertion: {assertion}"
-    print(prompt)
-    assert (
-        f"<test_case>\n{empty_orchestrator.test_case.__str__()}\n</test_case>" in prompt
+    context = TestExecutionContext(
+        test_case=mock_test_case,
+        current_step=mock_test_case.get_step(2),
+        step_index=2,
     )
+    prompt = empty_orchestrator._build_user_init_prompt(context)
+    action, assertion = context.current_step
+    test_step = f"{context.step_index}. action: {action}, assertion: {assertion}"
+    print(prompt)
+    assert f"<test_case>\n{context.test_case.__str__()}\n</test_case>" in prompt
     assert f"<current_step>\n{test_step}\n</current_step>" in prompt
 
 
 @pytest.mark.asyncio
-async def test_conversation(empty_orchestrator: Orchestrator):
+async def test_conversation(empty_orchestrator: Orchestrator, mock_test_case: TestCase):
     """Test prompt builds itself"""
+    context = TestExecutionContext(
+        test_case=mock_test_case,
+        current_step=mock_test_case.get_step(3),
+        step_index=3,
+    )
     fake_screenshot = b"screen"
-    step_index = 1
     history = "this is history"
-    empty_orchestrator._setup_conversation(step_index, fake_screenshot, history)
+    empty_orchestrator._setup_conversation(context, fake_screenshot, history)
     assert empty_orchestrator.conversation[0].role == MessageRole.System
     assert (
         "Your role is to analyze test steps"
@@ -193,6 +132,7 @@ async def test_conversation(empty_orchestrator: Orchestrator):
     assert (
         "Plan for the current test step" in empty_orchestrator.conversation[1].content
     )
+    assert history in empty_orchestrator.conversation[1].content
     assert empty_orchestrator.conversation[1].screenshot is not None
     assert len(empty_orchestrator.conversation[1].screenshot) == 1
     assert empty_orchestrator.conversation[1].screenshot[0] == fake_screenshot
@@ -285,11 +225,11 @@ async def test_integ_step():
             save_screenshot=True,
         )
         orchestrator = Orchestrator(browser)
-        orchestrator._test_case = test_case
-        print(orchestrator._test_case)
+        context = TestExecutionContext(
+            test_case=test_case, current_step=test_case.get_step(2), step_index=2
+        )
         _ = await browser.goto(url)
-        orchestrator._current_step = test_case.get_step(2)
-        verdict = await orchestrator.process_step(2)
+        verdict = await orchestrator.process_step(context)
         print(verdict.model_dump_json())
         assert verdict.status == Status.PASS
 
