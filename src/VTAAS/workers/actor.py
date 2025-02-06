@@ -82,6 +82,7 @@ class Actor(Worker):
             )
             await self.browser.mark_page()
             screenshot = await self.browser.screenshot()
+            await self.browser.unmark_page()
             logger.info(outcome)
             outcome += f'\nIs the task "{self.query}" now complete?'
             self.conversation.append(

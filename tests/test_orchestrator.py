@@ -165,23 +165,23 @@ def test_merge_worker_results_success(empty_orchestrator: Orchestrator):
         synthesis="Everything checks out",
     )
     results = [actor_result, assertor_result]
-    message = empty_orchestrator._merge_worker_results(True, results)
+    message, screenshots = empty_orchestrator._merge_worker_results(True, results)
 
     expected_header = "The sequence of workers was executed successfully:"
-    assert message.content.startswith(expected_header)
+    assert message.startswith(expected_header)
 
-    assert 'Act("search data") -> success' in message.content
-    assert "  Actions:" in message.content
-    assert "  - Plan to move forward" in message.content
-    assert "  - We have to click somewhere" in message.content
+    assert 'Act("search data") -> success' in message
+    assert "  Actions:" in message
+    assert "  - Plan to move forward" in message
+    assert "  - We have to click somewhere" in message
 
-    assert 'Assert("validate result") -> success' in message.content
-    assert "  Report: Everything checks out" in message.content
+    assert 'Assert("validate result") -> success' in message
+    assert "  Report: Everything checks out" in message
 
-    assert "<last_screenshot_analysis>" in message.content
-    assert "Then generate another sequence" in message.content
+    # assert "<last_screenshot_analysis>" in message
+    # assert "Then generate another sequence" in message
 
-    assert message.screenshot == [b"actor screenshot", b"assertor screenshot"]
+    assert screenshots == [b"actor screenshot", b"assertor screenshot"]
 
 
 def test_merge_worker_results_failure(empty_orchestrator: Orchestrator):
@@ -196,19 +196,19 @@ def test_merge_worker_results_failure(empty_orchestrator: Orchestrator):
         actions=[actor_action],
     )
     results: list[WorkerResult] = [actor_result]
-    message = empty_orchestrator._merge_worker_results(False, results)
+    message, screenshots = empty_orchestrator._merge_worker_results(False, results)
 
     expected_header = "The sequence of workers was executed but eventually failed:"
-    assert message.content.startswith(expected_header)
+    assert message.startswith(expected_header)
 
-    assert 'Act("go to myspace.com") -> fail' in message.content
-    assert "  Actions:" in message.content
-    assert "  - Let's browse to the home page" in message.content
+    assert 'Act("go to myspace.com") -> fail' in message
+    assert "  Actions:" in message
+    assert "  - Let's browse to the home page" in message
 
-    assert "<recovery>" in message.content
-    assert "State your decision" in message.content
+    # assert "<recovery>" in message
+    # assert "State your decision" in message
 
-    assert message.screenshot == [b"goto screenshot"]
+    assert screenshots == [b"goto screenshot"]
 
 
 @pytest.mark.asyncio

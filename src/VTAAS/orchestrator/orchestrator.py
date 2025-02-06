@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from VTAAS.schemas.llm import SequenceType
+from VTAAS.schemas.llm import SynthesisEntry, SequenceType
 from ..data.testcase import TestCase
 from ..schemas.verdict import (
     ActorResult,
     BaseResult,
     TestCaseVerdict,
     Status,
+    TestStepVerdict,
     WorkerResult,
 )
 from ..workers.browser import Browser
@@ -33,7 +34,7 @@ class TestExecutionContext:
     test_case: TestCase
     current_step: tuple[str, str]
     step_index: int
-    history: list[str] = field(default_factory=list)
+    synthesis: list[str] = field(default_factory=list)
 
 
 class Orchestrator:
@@ -62,47 +63,62 @@ class Orchestrator:
         if self._browser is None:
             self._browser = await Browser.create(timeout=3500, headless=True)
         _ = await self.browser.goto(exec_context.test_case.url)
-        done_steps: list[str] = []
         verdict = BaseResult(status=Status.UNK)
         for idx, test_step in enumerate(test_case):
             exec_context.current_step = test_step
             exec_context.step_index = idx + 1
             verdict = await self.process_step(exec_context)
             if verdict.status != Status.PASS:
-                break
-            step_str = f"{exec_context.step_index}. {test_step[0]} -> {test_step[1]}"
-            done_steps.append(step_str)
-            exec_context.history = done_steps.copy()
+                return TestCaseVerdict(
+                    status=Status.FAIL, step_index=idx, explaination=None
+                )
+            step_str = (
+                f"\n\n{exec_context.step_index}. {test_step[0]} -> {test_step[1]}\n"
+            )
+            step_synthesis = await self.step_synthesis(
+                exec_context, verdict.history, exec_context.synthesis
+            )
+            exec_context.synthesis.append(step_str)
+            exec_context.synthesis.append(self.synthesis_str(step_synthesis))
 
-        if verdict.status == Status.PASS:
-            return TestCaseVerdict(status=Status.PASS, explaination=None)
-        else:
-            return TestCaseVerdict(status=Status.FAIL, explaination=None)
+        return TestCaseVerdict(status=Status.PASS, explaination=None)
 
-    async def process_step(self, exec_context: TestExecutionContext) -> BaseResult:
+    async def process_step(self, exec_context: TestExecutionContext) -> TestStepVerdict:
         screenshot = await self.browser.screenshot()
-        self._setup_conversation(exec_context, screenshot)
         results: list[WorkerResult] = []
-        sequence_type = await self.plan_step_init()
+        step_history: list[str | tuple[str, list[bytes]]] = []
+        sequence_type = await self.plan_step_init(exec_context, screenshot)
+        step_history.append(
+            (
+                "Orchestrator: Planned for test step "
+                f"{exec_context.current_step[0]} => {exec_context.current_step[1]}"
+            )
+        )
         for i in range(4):
             logger.info(f"step #{exec_context.step_index}: processing iteration {i}")
             results = await self.execute_step(exec_context)
             success = not any(verdict.status != Status.PASS for verdict in results)
             if sequence_type == SequenceType.full and success:
-                return BaseResult(status=Status.PASS)
-            self.conversation.append(self._merge_worker_results(success, results))
+                return TestStepVerdict(status=Status.PASS, history=step_history)
+            workers_result = self._merge_worker_results(success, results)
+            step_history.append(workers_result)
             if success:
-                sequence_type = await self.plan_step_followup()
+                sequence_type = await self.plan_step_followup(workers_result)
+                step_history.append("Orchestrator: Planned the step further")
             else:
-                recovery = await self.plan_step_recover()
+                recovery = await self.plan_step_recover(workers_result)
+                step_history.append("Orchestrator: Came up with a recovery solution")
                 if not recovery:
-                    return BaseResult(status=Status.FAIL)
+                    return TestStepVerdict(status=Status.FAIL, history=step_history)
                 else:
                     sequence_type = recovery
-        return BaseResult(status=Status.FAIL)
+        return TestStepVerdict(status=Status.FAIL, history=step_history)
 
-    async def plan_step_init(self) -> SequenceType:
+    async def plan_step_init(
+        self, exec_context: TestExecutionContext, screenshot: bytes
+    ) -> SequenceType:
         """Planning for the test step: spawn workers based on LLM call."""
+        self._setup_conversation(exec_context, screenshot)
         response = await self.llm_client.plan_step(self.conversation)
         self.conversation.append(
             Message(
@@ -115,8 +131,20 @@ class Orchestrator:
         logger.info(f"Initialized {len(self.active_workers)} new workers")
         return response.sequence_type
 
-    async def plan_step_followup(self) -> SequenceType:
+    async def plan_step_followup(
+        self, workers_result: tuple[str, list[bytes]]
+    ) -> SequenceType:
         """Continuing planning for the test step: spawn workers based on LLM call."""
+        results_str, screenshots = workers_result
+        with open(
+            "./src/VTAAS/orchestrator/followup_prompt.txt", "r", encoding="utf-8"
+        ) as prompt_file:
+            results_str += prompt_file.read()
+
+        user_msg = Message(
+            role=MessageRole.User, content=results_str, screenshot=screenshots
+        )
+        self.conversation.append(user_msg)
         response = await self.llm_client.followup_step(self.conversation)
         self.conversation.append(
             Message(
@@ -129,8 +157,20 @@ class Orchestrator:
         logger.info(f"Initialized {len(self.active_workers)} new workers")
         return response.sequence_type
 
-    async def plan_step_recover(self) -> SequenceType | bool:
+    async def plan_step_recover(
+        self, workers_result: tuple[str, list[bytes]]
+    ) -> SequenceType | bool:
         """Recover planning of the test step: spawn workers based on LLM call."""
+        results_str, screenshots = workers_result
+        with open(
+            "./src/VTAAS/orchestrator/recover_prompt.txt", "r", encoding="utf-8"
+        ) as prompt_file:
+            results_str += prompt_file.read()
+
+        user_msg = Message(
+            role=MessageRole.User, content=results_str, screenshot=screenshots
+        )
+        self.conversation.append(user_msg)
         response = await self.llm_client.recover_step(self.conversation)
         self.conversation.append(
             Message(
@@ -138,7 +178,7 @@ class Orchestrator:
                 content=response.model_dump_json(),
             )
         )
-        if not response.plan:
+        if not response.plan or not response.plan.workers:
             return False
         for config in response.plan.workers:
             _ = self.spawn_worker(config)
@@ -153,30 +193,52 @@ class Orchestrator:
         """
         results: list[WorkerResult] = []
         result = BaseResult(status=Status.PASS)
+        local_history: list[str] = []
         while self.active_workers and result.status == Status.PASS:
             worker = self.active_workers[0]
-            input: WorkerInput = self._prepare_worker_input(exec_context, worker.type)
+            input: WorkerInput = self._prepare_worker_input(
+                exec_context, worker.type, local_history
+            )
             result = await worker.process(input=input)
-            self._save_worker_result(exec_context, result)
+            if isinstance(result, ActorResult):
+                for action in result.actions:
+                    if action:
+                        local_history.append(action.action)
+            else:
+                local_history.append(f'Verified: "{result.query}"')
             results.append(result)
             worker.status = WorkerStatus.RETIRED
             self.active_workers.remove(worker)
         self.active_workers.clear()
         return results
 
-    def _save_worker_result(
-        self, exec_context: TestExecutionContext, result: WorkerResult
-    ):
-        if isinstance(result, ActorResult):
-            for action in result.actions:
-                if action:
-                    exec_context.history.append(action.action)
-        else:
-            exec_context.history.append(f'Verified: "{result.query}"')
+    async def step_synthesis(
+        self,
+        exec_context: TestExecutionContext,
+        step_history: list[str | tuple[str, list[bytes]]],
+        existing_synthesis: list[str],
+    ) -> list[SynthesisEntry]:
+        """Test step execution synthesis: keeping relevant info for future steps"""
+        screenshots = [
+            sshot
+            for entry in step_history
+            if isinstance(entry, tuple)
+            for sshot in entry[1]
+        ]
+        system = "You are an expert in meaningful textual data extraction"
+        synthesis = "\n".join(existing_synthesis)
+        raw_step_history = "\n-----\n".join(
+            [entry if isinstance(entry, str) else entry[0] for entry in step_history]
+        )
+        user = self._build_synthesis_prompt(exec_context, synthesis, raw_step_history)
+        response = await self.llm_client.step_synthesis(system, user, screenshots)
+        return response.entries
 
-    def _merge_worker_results(self, success: bool, results: list[WorkerResult]):
+    def _merge_worker_results(
+        self, success: bool, results: list[WorkerResult]
+    ) -> tuple[str, list[bytes]]:
         outcome: str = "successfully" if success else "but eventually failed"
-        user_msg: str = f"The sequence of workers was executed {outcome}:"
+        merged_results: str = f"The sequence of workers was executed {outcome}:\n"
         screenshots: list[bytes] = []
         for result in results:
             screenshots.append(result.screenshot)
@@ -184,46 +246,38 @@ class Orchestrator:
                 actions_str = "\n".join(
                     [f"  - {action.chain_of_thought}" for action in result.actions]
                 )
-                user_msg += (
+                merged_results += (
                     f'Act("{result.query}") -> {result.status.value}\n'
                     f"  Actions:\n{actions_str}\n"
                     "-----------------\n"
                 )
             else:
-                user_msg += (
+                merged_results += (
                     f'Assert("{result.query}") -> {result.status.value}\n'
                     f"  Report: {result.synthesis}\n"
                     "-----------------\n"
                 )
-        if success:
-            with open(
-                "./src/VTAAS/orchestrator/followup_prompt.txt", "r", encoding="utf-8"
-            ) as prompt_file:
-                user_msg += prompt_file.read()
-
-        else:
-            with open(
-                "./src/VTAAS/orchestrator/recover_prompt.txt", "r", encoding="utf-8"
-            ) as prompt_file:
-                user_msg += prompt_file.read()
-
-        return Message(role=MessageRole.User, content=user_msg, screenshot=screenshots)
+        return merged_results, screenshots
 
     def _prepare_worker_input(
-        self, exec_context: TestExecutionContext, type: WorkerType
+        self,
+        exec_context: TestExecutionContext,
+        type: WorkerType,
+        step_history: list[str],
     ) -> WorkerInput:
+        full_history = ("\n").join(exec_context.synthesis + step_history)
         match type:
             case WorkerType.ACTOR:
                 return ActorInput(
                     test_case=exec_context.test_case.__str__(),
                     test_step=exec_context.current_step,
-                    history=("\n").join(exec_context.history),
+                    history=full_history,
                 )
             case WorkerType.ASSERTOR:
                 return AssertorInput(
                     test_case=exec_context.test_case.__str__(),
                     test_step=exec_context.current_step,
-                    history=("\n").join(exec_context.history),
+                    history=full_history,
                 )
 
     def spawn_worker(self, config: WorkerConfig) -> Worker:
@@ -278,6 +332,32 @@ class Orchestrator:
         return prompt_template.format(
             test_case=test_case, current_step=test_step, history=history
         )
+
+    def _build_synthesis_prompt(
+        self,
+        exec_context: TestExecutionContext,
+        previous_synthesis: str,
+        step_history: str,
+    ) -> str:
+        with open(
+            "./src/VTAAS/orchestrator/synthesis_prompt.txt", "r", encoding="utf-8"
+        ) as prompt_file:
+            prompt_template = prompt_file.read()
+        return prompt_template.format(
+            test_case=exec_context.test_case,
+            current_step=exec_context.current_step,
+            saved_data=previous_synthesis,
+            execution_logs=step_history,
+        )
+
+    def synthesis_str(self, synthesis: list[SynthesisEntry]):
+        output: str = ""
+        for entry in synthesis:
+            output += " ----- \n"
+            output += f"type: {entry.entry_type}\n"
+            output += f"description: {entry.description}\n"
+            output += f"value: {entry.value}\n"
+        return output
 
     @property
     def browser(self) -> Browser:

@@ -8,14 +8,13 @@ from VTAAS.utils.llm_client import LLMClient
 
 
 @pytest.mark.asyncio
-async def test_plannif():
+async def test_plannif(empty_llm_client: LLMClient):
     """Test main prompt builds itself"""
     load_config()
-    llm_client = LLMClient()
     request = LLMRequest(
         conversation=("You are the best tester", "fill in the blanks"), screenshot=b""
     )
-    plan = llm_client.plan_step(request)
+    plan = await empty_llm_client.plan_step(request)
     print(plan)
 
 
@@ -29,17 +28,3 @@ def mock_openai(mocker) -> AsyncOpenAI:
 @pytest.fixture
 def empty_llm_client(mock_openai: AsyncOpenAI) -> LLMClient:
     return LLMClient()
-
-
-@pytest.mark.asyncio
-async def test_regex(empty_llm_client: LLMClient):
-    """Test main prompt builds itself"""
-    response = """
-Here is my list
-<act_assert_sequence>
-act("this")
-assert("that")
-</act_assert_sequence>
-Now do it!
-    """
-    print(empty_llm_client._extract_worker_sequence(response))

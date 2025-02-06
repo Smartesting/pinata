@@ -44,6 +44,16 @@ class LLMTestStepFollowUpResponse(BaseModel):
     sequence_type: SequenceType
 
 
+class SynthesisEntry(BaseModel):
+    entry_type: str
+    description: str
+    value: str
+
+
+class LLMSynthesisResponse(BaseModel):
+    entries: list[SynthesisEntry]
+
+
 class LLMTestSequencePart(BaseModel):
     workers: list[WorkerConfig]
     sequence_type: SequenceType

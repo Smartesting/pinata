@@ -336,6 +336,12 @@ class Browser:
         )
         await self.page.evaluate("window.markPage()")
 
+    async def unmark_page(self):
+        _ = await self.page.wait_for_function(
+            "() => typeof window.unmarkPage === 'function'"
+        )
+        await self.page.evaluate("window.unmarkPage()")
+
     async def get_marks(self) -> list[Mark]:
         return cast(
             list[Mark],

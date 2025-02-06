@@ -42,7 +42,12 @@ class AssertorResult(WorkerBaseResult):
     synthesis: str
 
 
-class TestCaseVerdict(BaseResult): ...
+class TestStepVerdict(BaseResult):
+    history: list[str | tuple[str, list[bytes]]]
+
+
+class TestCaseVerdict(BaseResult):
+    step_index: int = None
 
 
 WorkerResult = ActorResult | AssertorResult

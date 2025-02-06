@@ -1,7 +1,6 @@
 import ast
 import base64
 from collections.abc import Iterable
-import re
 from typing import final
 
 from openai.types.chat import (
@@ -17,16 +16,16 @@ from openai.types.chat.chat_completion_content_part_image_param import ImageURL
 from openai import OpenAIError, AsyncOpenAI
 
 
-from ..schemas.worker import Message, MessageRole, WorkerConfig, WorkerType
+from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
+    LLMSynthesisResponse,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
 )
 
-# from ..schemas.worker_schemas import ActorWorker, AssertorWorker
 from ..utils.logger import get_logger
 from ..utils.config import load_config
 import sys
@@ -132,7 +131,7 @@ class LLMClient:
         try:
             logger.info(f"Actor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o-mini",
+                model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMActResponse,
             )
@@ -173,28 +172,39 @@ class LLMClient:
             logger.error(f"Error in assert call: {str(e)}")
             raise
 
-    def _extract_worker_sequence(self, response: str) -> list[WorkerConfig]:
-        xml_pattern = r"<act_assert_sequence>(.*?)</act_assert_sequence>"
-        match = re.search(xml_pattern, response, re.DOTALL)
-        if match:
-            workers: list[WorkerConfig] = []
-            inner_content = match.group(1)
-            for w in inner_content.splitlines():
-                act_pattern = r"act\(\"(.*?)\"\)"
-                match = re.search(act_pattern, w, re.DOTALL)
-                if match:
-                    workers.append(
-                        WorkerConfig(type=WorkerType.ACTOR, query=match.group(1))
-                    )
-                    continue
-                assert_pattern = r"assert\(\"(.*?)\"\)"
-                match = re.search(assert_pattern, w, re.DOTALL)
-                if match:
-                    workers.append(
-                        WorkerConfig(type=WorkerType.ASSERTOR, query=match.group(1))
-                    )
-            return workers
-        return []
+    async def step_synthesis(
+        self, system: str, user: str, screenshots: list[bytes]
+    ) -> LLMSynthesisResponse:
+        """Synthesis call"""
+        try:
+            conversation: list[Message] = [
+                Message(role=MessageRole.System, content=system),
+                Message(
+                    role=MessageRole.User,
+                    content=user,
+                    screenshot=screenshots,
+                ),
+            ]
+            response = await self.aclient.beta.chat.completions.parse(
+                model="gpt-4o-mini",
+                messages=self._to_openai_messages(conversation),
+                response_format=LLMSynthesisResponse,
+            )
+            resp_msg = response.choices[0].message.content
+            if not resp_msg:
+                raise Exception("Synthesis response is empty")
+            llm_response = LLMSynthesisResponse.model_validate(
+                ast.literal_eval(response.choices[0].message.content or "")
+            )
+
+            logger.info(
+                f"Received Synthesis response:\n{llm_response.model_dump_json(indent=4)}"
+            )
+            return llm_response
+
+        except Exception as e:
+            logger.error(f"Error in assert call: {str(e)}")
+            raise
 
     def _to_openai_messages(
         self, conversation: list[Message]
