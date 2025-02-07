@@ -1,15 +1,15 @@
 import logging
 from typing import cast
-from playwright.async_api import async_playwright
-import pytest
-from pytest_mock import MockerFixture
 from unittest.mock import Mock
 
+import pytest
+from playwright.async_api import async_playwright
+from pytest_mock import MockerFixture
+
 from VTAAS.data.testcase import TestCaseCollection
+from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.schemas.verdict import Status
 from VTAAS.schemas.worker import AssertorInput, MessageRole
-from VTAAS.utils.logger import get_logger
-from VTAAS.utils.llm_client import LLMClient
 from VTAAS.workers.assertor import Assertor
 from VTAAS.workers.browser import Browser
 
@@ -22,9 +22,7 @@ def mock_llm_client(mocker: MockerFixture) -> LLMClient:
     mock_instance: LLMClient = cast(LLMClient, mocked_class.return_value)
 
     mock_instance.plan_step = Mock()
-    mock_instance.get_step_verdict = Mock()
     # mock_instance.get_worker_configs.return_value = [...]
-    # mock_instance.get_step_verdict.return_value = ...
 
     return mock_instance
 
@@ -61,7 +59,7 @@ def mock_assertor_input() -> AssertorInput:
 
 @pytest.fixture
 def empty_assertor(mock_assertion: str, mock_browser: Browser) -> Assertor:
-    return Assertor(mock_assertion, mock_browser)
+    return Assertor(mock_assertion, mock_browser, llm_provider=LLMProviders.OPENAI)
 
 
 @pytest.mark.asyncio
@@ -119,7 +117,7 @@ async def test_integ():
             save_screenshot=True,
         )
         _ = await browser.goto(url)
-        assertor = Assertor(assertion, browser)
+        assertor = Assertor(assertion, browser, llm_provider=LLMProviders.OPENAI)
         verdict = await assertor.process(assertor_input)
         print(verdict)
         assert verdict.status == Status.PASS

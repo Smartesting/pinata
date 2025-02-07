@@ -1,4 +1,7 @@
 from dataclasses import dataclass, field
+from typing import TypedDict, Unpack
+from VTAAS.llm.llm_client import LLMClient, LLMProviders
+from VTAAS.llm.utils import create_llm_client
 from VTAAS.schemas.llm import SynthesisEntry, SequenceType
 from ..data.testcase import TestCase
 from ..schemas.verdict import (
@@ -10,7 +13,6 @@ from ..schemas.verdict import (
     WorkerResult,
 )
 from ..workers.browser import Browser
-from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..workers.actor import Actor
 from ..workers.assertor import Assertor
@@ -37,14 +39,33 @@ class TestExecutionContext:
     synthesis: list[str] = field(default_factory=list)
 
 
+class OrchestratorParams(TypedDict, total=False):
+    browser: Browser | None
+    llm_provider: LLMProviders
+
+
 class Orchestrator:
     """Orchestrator class to manage actors and assertors."""
 
-    def __init__(self, browser: Browser | None = None):
+    def __init__(self, **kwargs: Unpack[OrchestratorParams]):
+        default_params: OrchestratorParams = {
+            "browser": None,
+            "llm_provider": LLMProviders.OPENAI,
+        }
+        custom_params = kwargs
+        if custom_params and set(custom_params.keys()).issubset(
+            set(default_params.keys())
+        ):
+            default_params.update(custom_params)
+        elif custom_params:
+            raise ValueError("unknown orchestrator parameter(s) received")
+
+        self.params: OrchestratorParams = default_params
         self.workers: list[Worker] = []
         self.active_workers: list[Worker] = []
-        self.llm_client: LLMClient = LLMClient()
-        self._browser: Browser | None = browser
+        self._browser: Browser | None = self.params["browser"]
+        self.llm_provider: LLMProviders = self.params["llm_provider"]
+        self.llm_client: LLMClient = create_llm_client(self.llm_provider)
         self._exec_context: TestExecutionContext | None = None
         self._followup_prompt: str | None = None
         self._recover_prompt: str | None = None
@@ -285,11 +306,11 @@ class Orchestrator:
         worker: Worker
         match config.type:
             case WorkerType.ACTOR:
-                worker = Actor(config.query, self.browser)
+                worker = Actor(config.query, self.browser, self.llm_provider)
                 self.workers.append(worker)
                 self.active_workers.append(worker)
             case WorkerType.ASSERTOR:
-                worker = Assertor(config.query, self.browser)
+                worker = Assertor(config.query, self.browser, self.llm_provider)
                 self.workers.append(worker)
                 self.active_workers.append(worker)
         return worker

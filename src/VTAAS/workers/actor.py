@@ -2,6 +2,8 @@ from datetime import datetime
 import os
 from typing import TypeGuard, final, override
 
+from VTAAS.llm.llm_client import LLMClient, LLMProviders
+from VTAAS.llm.utils import create_llm_client
 from VTAAS.utils.banner import add_banner
 
 from ..schemas.llm import (
@@ -14,7 +16,6 @@ from ..schemas.llm import (
     SelectCommand,
 )
 from ..schemas.verdict import ActorAction, ActorResult, Status, WorkerResult
-from ..utils.llm_client import LLMClient
 from ..workers.browser import Browser
 from ..schemas.worker import (
     ActorInput,
@@ -33,10 +34,16 @@ logger = get_logger(__name__)
 class Actor(Worker):
     """The Actor receives an ACT query and issues browser commands to perform the query"""
 
-    def __init__(self, query: str, browser: Browser, max_rounds: int = 4):
+    def __init__(
+        self,
+        query: str,
+        browser: Browser,
+        llm_provider: LLMProviders,
+        max_rounds: int = 4,
+    ):
         super().__init__(query, browser)
         self.type = WorkerType.ACTOR
-        self.llm_client = LLMClient()
+        self.llm_client: LLMClient = create_llm_client(llm_provider)
         self.actions: list[ActorAction] = []
         self.query = query
         self.max_rounds = max_rounds

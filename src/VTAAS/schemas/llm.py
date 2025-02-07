@@ -1,6 +1,8 @@
+import ast
 from enum import Enum
 from typing import Literal
 
+from google.genai.types import Schema
 from pydantic import BaseModel, Field
 
 
@@ -131,6 +133,23 @@ class LLMActResponse(BaseModel):
         return str(data)
 
 
+class GoogleCommand(BaseModel):
+    name: Literal["click", "goto", "fill", "select", "scroll", "finish"] = Field(
+        ..., description="the type of command"
+    )
+    args: tuple[str, str] = Field(..., description="the command args")
+
+
+class LLMActResponseGoogle(BaseModel):
+    """Schema for the response received from LLM."""
+
+    current_webpage_identification: str
+    screenshot_analysis: str
+    query_progress: str
+    next_action: str
+    command: GoogleCommand = Field(..., description="Command to perform on the web app")
+
+
 class LLMAssertResponse(BaseModel):
     """Schema for the response received from LLM."""
 
@@ -143,7 +162,38 @@ class LLMAssertResponse(BaseModel):
         return str(data)
 
 
-class LLMVerdictResponse(BaseModel):
-    """Schema for the response received from LLM."""
+def to_llm_act_response(response: LLMActResponseGoogle) -> LLMActResponse:
+    """Converts LLMActResponseGoogle to LLMActResponse."""
+    command: Command
+    if response.command.name == "click":
+        command = ClickCommand.model_validate(
+            ast.literal_eval(response.command.model_dump_json())
+        )
+    elif response.command.name == "goto":
+        command = GotoCommand.model_validate(
+            ast.literal_eval(response.command.model_dump_json())
+        )
+    elif response.command.name == "fill":
+        command = FillCommand.model_validate(
+            ast.literal_eval(response.command.model_dump_json())
+        )
+        # case "goto":
+        #     command = response.goto
+        # case "fill":
+        #     command = response.fill
+        # case "select":
+        #     command = response.select
+        # case "scroll":
+        #     command = response.scroll
+        # case "finish":
+        #     command = response.finish
+    else:
+        raise ValueError("No command found in LLMActResponseGoogle")
 
-    verdiceit: WorkerResult
+    return LLMActResponse(
+        current_webpage_identification=response.current_webpage_identification,
+        screenshot_analysis=response.screenshot_analysis,
+        query_progress=response.query_progress,
+        next_action=response.next_action,
+        command=command,
+    )

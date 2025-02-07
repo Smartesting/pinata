@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 from VTAAS.data.testcase import TestCaseCollection
+from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.schemas.llm import (
     ClickCommand,
     FillCommand,
@@ -14,7 +15,6 @@ from VTAAS.schemas.llm import (
 )
 from VTAAS.schemas.verdict import ActorResult, Status, WorkerResult
 from VTAAS.schemas.worker import ActorInput, MessageRole
-from VTAAS.utils.llm_client import LLMClient
 from VTAAS.workers.actor import Actor
 from VTAAS.workers.browser import Browser
 
@@ -93,16 +93,13 @@ def mock_actor_input() -> ActorInput:
 
 @pytest.fixture
 def empty_actor(mock_query: str, mock_browser: Browser) -> Actor:
-    return Actor(mock_query, mock_browser)
+    return Actor(mock_query, mock_browser, LLMProviders.OPENAI)
 
 
 @pytest.mark.asyncio
 async def test_user_prompt(empty_actor: Actor, mock_actor_input: ActorInput):
     """Test main prompt builds itself"""
     prompt = empty_actor._build_user_prompt(mock_actor_input)
-    # current_step = mock_actor_input.test_step[0] + "; " + mock_actor_input.test_step[1]
-    # assert f"<test_case>\n{mock_actor_input.test_case}\n</test_case>" in prompt
-    # assert f"<current_step>\n{current_step}\n</current_step>" in prompt
     assert (
         f"<previous_actions>\n{mock_actor_input.history}\n</previous_actions>" in prompt
     )
@@ -135,12 +132,14 @@ async def test_actor_process_3_rounds(
     mock_actor_input: ActorInput,
 ):
     with (
-        patch("VTAAS.workers.actor.LLMClient", return_value=mock_llm_client),
+        patch("VTAAS.workers.actor.create_llm_client", return_value=mock_llm_client),
         patch(
             "VTAAS.workers.actor.add_banner", return_value=b"banner_screenshot"
         ) as mock_add_banner,
     ):
-        actor = Actor(query="Test Query", browser=mock_browser)
+        actor = Actor(
+            query="Test Query", browser=mock_browser, llm_provider=LLMProviders.OPENAI
+        )
         result: WorkerResult = await actor.process(mock_actor_input)
 
         assert isinstance(result, ActorResult)
@@ -182,7 +181,7 @@ async def test_integ():
             save_screenshot=True,
         )
         _ = await browser.goto(url)
-        actor = Actor(query, browser)
+        actor = Actor(query, browser, LLMProviders.OPENAI)
         verdict = await actor.process(actor_input)
         print(verdict)
         assert verdict.status == Status.PASS

@@ -1,7 +1,7 @@
 import ast
 import base64
 from collections.abc import Iterable
-from typing import final
+from typing import final, override
 
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
@@ -14,6 +14,8 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion_content_part_image_param import ImageURL
 from openai import OpenAIError, AsyncOpenAI
+
+from VTAAS.llm.llm_client import LLMClient
 
 
 from ..schemas.worker import Message, MessageRole
@@ -34,7 +36,7 @@ logger = get_logger(__name__)
 
 
 @final
-class LLMClient:
+class OpenAILLMClient(LLMClient):
     """Communication with OpenAI"""
 
     def __init__(self):
@@ -45,6 +47,7 @@ class LLMClient:
             logger.fatal(e, exc_info=True)
             sys.exit(1)
 
+    @override
     async def plan_step(self, conversation: list[Message]) -> LLMTestStepPlanResponse:
         """Get list of act/assert workers from LLM."""
         try:
@@ -70,6 +73,7 @@ class LLMClient:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
+    @override
     async def followup_step(
         self, conversation: list[Message]
     ) -> LLMTestStepFollowUpResponse:
@@ -96,6 +100,7 @@ class LLMClient:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
+    @override
     async def recover_step(
         self, conversation: list[Message]
     ) -> LLMTestStepRecoverResponse:
@@ -126,6 +131,7 @@ class LLMClient:
             logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
+    @override
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
         try:
@@ -149,6 +155,7 @@ class LLMClient:
             logger.error(f"Error in act call: {str(e)}")
             raise
 
+    @override
     async def assert_(self, conversation: list[Message]) -> LLMAssertResponse:
         """Assertor call"""
         try:
@@ -172,6 +179,7 @@ class LLMClient:
             logger.error(f"Error in assert call: {str(e)}")
             raise
 
+    @override
     async def step_synthesis(
         self, system: str, user: str, screenshots: list[bytes]
     ) -> LLMSynthesisResponse:

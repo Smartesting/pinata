@@ -1,9 +1,10 @@
 from typing import TypeGuard, final, override
 
+from VTAAS.llm.llm_client import LLMProviders
+from VTAAS.llm.utils import create_llm_client
 from VTAAS.utils.banner import add_banner
 
 from ..schemas.verdict import AssertorResult
-from ..utils.llm_client import LLMClient
 from ..workers.browser import Browser
 from ..utils.logger import get_logger
 from ..schemas.worker import (
@@ -22,10 +23,10 @@ logger = get_logger(__name__)
 class Assertor(Worker):
     """Assertor implementation."""
 
-    def __init__(self, query: str, browser: Browser):
+    def __init__(self, query: str, browser: Browser, llm_provider: LLMProviders):
         super().__init__(query, browser)
         self.type = WorkerType.ASSERTOR
-        self.llm_client = LLMClient()
+        self.llm_client = create_llm_client(llm_provider)
         logger.info(f"Assertor {self.id[:8]} initialized with query: {self.query}")
 
     @override

@@ -1,6 +1,7 @@
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCaseCollection
+from VTAAS.llm.llm_client import LLMProviders
 from VTAAS.orchestrator import Orchestrator
 from VTAAS.workers.browser import Browser
 
@@ -19,7 +20,7 @@ async def test_one_TC():
             "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
         )
         test_case = test_collection.get_test_case_by_id("1")
-        orchestrator = Orchestrator(browser)
+        orchestrator = Orchestrator(browser=browser, llm_provider=LLMProviders.GOOGLE)
 
         _ = await orchestrator.process_testcase(test_case)
     # Initialize workers based on a specific task

@@ -15,7 +15,7 @@ from VTAAS.schemas.verdict import (
     WorkerResult,
 )
 from VTAAS.schemas.worker import MessageRole, WorkerConfig, WorkerType
-from VTAAS.utils.llm_client import LLMClient
+from VTAAS.llm.openai_client import OpenAILLMClient
 from VTAAS.workers.actor import Actor
 from VTAAS.workers.browser import Browser
 
@@ -42,8 +42,8 @@ def llm_plan_response_generator() -> Generator[LLMTestStepPlanResponse, None, No
 
 
 @pytest.fixture
-def mock_llm_client() -> LLMClient:
-    mock_instance: LLMClient = AsyncMock(spec=LLMClient)
+def mock_llm_client() -> OpenAILLMClient:
+    mock_instance: OpenAILLMClient = AsyncMock(spec=OpenAILLMClient)
     response_generator = llm_plan_response_generator()
     mock_instance.plan = AsyncMock(side_effect=lambda _: next(response_generator))
     return mock_instance
@@ -90,7 +90,7 @@ def mock_browser() -> Browser:
 
 @pytest.fixture
 def empty_orchestrator(
-    mock_llm_client: LLMClient,
+    mock_llm_client: OpenAILLMClient,
 ) -> Orchestrator:
     return Orchestrator()
 
@@ -224,7 +224,7 @@ async def test_integ_step():
             playwright=p,
             save_screenshot=True,
         )
-        orchestrator = Orchestrator(browser)
+        orchestrator = Orchestrator(browser=browser)
         context = TestExecutionContext(
             test_case=test_case, current_step=test_case.get_step(2), step_index=2
         )
@@ -236,7 +236,7 @@ async def test_integ_step():
 
 # @pytest.mark.asyncio
 # async def test_process_step(
-#     mock_llm_client: LLMClient,
+#     mock_llm_client: OpenAILLMClient,
 #     mock_browser: Browser,
 #     mock_test_case_1: TestCase,
 # ):

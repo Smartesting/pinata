@@ -4,11 +4,11 @@ import pytest
 
 from VTAAS.schemas.llm import LLMRequest
 from VTAAS.utils.config import load_config
-from VTAAS.utils.llm_client import LLMClient
+from VTAAS.llm.openai_client import OpenAILLMClient
 
 
 @pytest.mark.asyncio
-async def test_plannif(empty_llm_client: LLMClient):
+async def test_plannif(empty_llm_client: OpenAILLMClient):
     """Test main prompt builds itself"""
     load_config()
     request = LLMRequest(
@@ -20,11 +20,11 @@ async def test_plannif(empty_llm_client: LLMClient):
 
 @pytest.fixture
 def mock_openai(mocker) -> AsyncOpenAI:
-    mocked_class = mocker.patch("VTAAS.utils.llm_client.AsyncOpenAI", autospec=True)
+    mocked_class = mocker.patch("VTAAS.llm.openai_client.AsyncOpenAI", autospec=True)
     mock_instance: AsyncOpenAI = cast(AsyncOpenAI, mocked_class.return_value)
     return mock_instance
 
 
 @pytest.fixture
-def empty_llm_client(mock_openai: AsyncOpenAI) -> LLMClient:
-    return LLMClient()
+def empty_llm_client(mock_openai: AsyncOpenAI) -> OpenAILLMClient:
+    return OpenAILLMClient()
