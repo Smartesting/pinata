@@ -80,7 +80,7 @@ class Browser:
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
-        self.logger = get_logger(__name__, self._params["start_time"])
+        self.logger = get_logger("Browser", self._params["start_time"])
         self.logger.info(f"Browser {self.id} instanciated")
 
     async def initialize(self) -> None:

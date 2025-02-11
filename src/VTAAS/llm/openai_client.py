@@ -40,7 +40,7 @@ class OpenAILLMClient(LLMClient):
     def __init__(self, start_time: float):
         load_config()
         self.start_time = start_time
-        self.logger = get_logger(__name__, self.start_time)
+        self.logger = get_logger("OpenAI LLM Client", self.start_time)
         try:
             self.aclient = AsyncOpenAI()
         except OpenAIError as e:

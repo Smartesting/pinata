@@ -84,7 +84,7 @@ class TestCase:
             output += "\n"
             output += f"{idx + 1}. {test_step[0]}"
             if test_step[1]:
-                output += f"; Assertion: {test_step[0]}"
+                output += f"; Assertion: {test_step[1]}"
         return output
 
     @override

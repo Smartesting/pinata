@@ -36,7 +36,7 @@ class TestExecutionContext:
     test_case: TestCase
     current_step: tuple[str, str]
     step_index: int
-    synthesis: list[str] = field(default_factory=list)
+    history: list[str] = field(default_factory=list)
 
 
 class OrchestratorParams(TypedDict, total=False):
@@ -82,7 +82,10 @@ class Orchestrator:
         """Manages the main execution loop for the given Test Case."""
         self.logger.info(f"Processing test case {test_case.name}")
         exec_context = TestExecutionContext(
-            test_case=test_case, current_step=test_case.get_step(1), step_index=1
+            test_case=test_case,
+            current_step=test_case.get_step(1),
+            step_index=1,
+            history=[],
         )
         if self._browser is None:
             self._browser = await Browser.create(
@@ -104,14 +107,13 @@ class Orchestrator:
                 return TestCaseVerdict(
                     status=Status.FAIL, step_index=idx, explaination=None
                 )
-            step_str = (
-                f"\n\n{exec_context.step_index}. {test_step[0]} -> {test_step[1]}\n"
-            )
+            step_str = f"{exec_context.step_index}. {test_step[0]} -> {test_step[1]}"
             step_synthesis = await self.step_postprocess(
-                exec_context, verdict.history, exec_context.synthesis
+                exec_context, verdict.history, exec_context.history
             )
-            exec_context.synthesis.append(step_str)
-            exec_context.synthesis.append(Orchestrator.synthesis_str(step_synthesis))
+            exec_context.history.append(step_str)
+            if len(step_synthesis) > 0:
+                exec_context.history.append(Orchestrator.synthesis_str(step_synthesis))
 
         return TestCaseVerdict(status=Status.PASS, explaination=None)
 
@@ -134,16 +136,19 @@ class Orchestrator:
                 f"{exec_context.current_step[0]} => {exec_context.current_step[1]}"
             )
         )
-        for i in range(max_tries):
+        for i in range(max_tries + 1):
             self.logger.info(
                 f"step #{exec_context.step_index}: processing iteration {i + 1}"
             )
             results = await self.execute_step(exec_context)
             success = not any(verdict.status != Status.PASS for verdict in results)
+            if not success and i >= max_tries:
+                break
+            workers_result = self._merge_worker_results(success, results)
+            step_history.append(workers_result[0])
+            self.logger.debug(f"workers merged results:\n{workers_result[0]}")
             if sequence_type == SequenceType.full and success:
                 return TestStepVerdict(status=Status.PASS, history=step_history)
-            workers_result = self._merge_worker_results(success, results)
-            step_history.append(workers_result)
             if success:
                 sequence_type = await self.plan_step_followup(workers_result)
                 step_history.append("Orchestrator: Planned the step further")
@@ -283,6 +288,7 @@ class Orchestrator:
             [entry if isinstance(entry, str) else entry[0] for entry in step_history]
         )
         user = self._build_synthesis_prompt(exec_context, synthesis, raw_step_history)
+        self.logger.debug("Data Extraction prompt:\n" + user)
         response = await self.llm_client.step_postprocess(system, user, screenshots)
         return response.entries
 
@@ -311,44 +317,25 @@ class Orchestrator:
                 )
         return merged_results, screenshots
 
-    def step_sharp_synthesis(self, success: bool, results: list[WorkerResult]):
-        outcome: str = "successfully" if success else "but eventually failed"
-        merged_results: str = f"The sequence of workers was executed {outcome}:\n"
-        for result in results:
-            if isinstance(result, ActorResult):
-                actions_str = "\n".join(
-                    [f"  - {action.action}" for action in result.actions]
-                )
-                merged_results += (
-                    f'Act("{result.query}") -> {result.status.value}\n'
-                    f"  Actions:\n{actions_str}\n"
-                    "-----------------\n"
-                )
-            else:
-                merged_results += (
-                    f'Assert("{result.query}") -> {result.status.value}\n'
-                    "-----------------\n"
-                )
-
     def _prepare_worker_input(
         self,
         exec_context: TestExecutionContext,
         type: WorkerType,
         step_history: list[str],
     ) -> WorkerInput:
-        full_history = ("\n").join(exec_context.synthesis + step_history)
+        full_history = "\n".join(exec_context.history + step_history)
         match type:
             case WorkerType.ACTOR:
                 return ActorInput(
                     test_case=exec_context.test_case.__str__(),
                     test_step=exec_context.current_step,
-                    history=full_history,
+                    history=full_history or None,
                 )
             case WorkerType.ASSERTOR:
                 return AssertorInput(
                     test_case=exec_context.test_case.__str__(),
                     test_step=exec_context.current_step,
-                    history=full_history,
+                    history=full_history or None,
                 )
 
     def spawn_worker(self, config: WorkerConfig) -> Worker:
@@ -401,8 +388,15 @@ class Orchestrator:
         test_step = (
             f"{exec_context.step_index}. action: {action}, assertion: {assertion}"
         )
+        history = (
+            "<history>\n" + "\n".join(exec_context.history) + "\n</history>"
+            if len(exec_context.history) > 0
+            else ""
+        )
         return prompt_template.format(
-            test_case=test_case, current_step=test_step, history=exec_context.synthesis
+            test_case=test_case,
+            current_step=test_step,
+            history=history,
         )
 
     def _build_synthesis_prompt(
@@ -415,10 +409,21 @@ class Orchestrator:
             "./src/VTAAS/orchestrator/synthesis_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
             prompt_template = prompt_file.read()
+        saved_data = (
+            ""
+            if not previous_synthesis
+            else (
+                "The following synthesis has already been done on previous steps:\n"
+                "<current_synthesis>"
+                f"{previous_synthesis}"
+                "</current_synthesis>"
+            )
+        )
+        test_step = f"{exec_context.step_index}. {exec_context.current_step[0]} -> {exec_context.current_step[1]}"
         return prompt_template.format(
             test_case=exec_context.test_case,
-            current_step=exec_context.current_step,
-            saved_data=previous_synthesis,
+            current_step=test_step,
+            saved_data=saved_data,
             execution_logs=step_history,
         )
 

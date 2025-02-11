@@ -16,9 +16,7 @@ A group of actors and assertor workers have been attempting to perform the curre
 </execution_logs>
 
 The following synthesis has already been done on previous steps:
-<current_synthesis>
 {saved_data}
-</current_synthesis>
 :
 Your task is to carefully analyze the execution logs and extract meaningful data that is of importance to complete the subsequent test steps. You must keep in mind that workers and planners for subsequent steps need your data extraction to perform their task. Your role is of the utmost importance. 
 
@@ -55,4 +53,4 @@ Be sure to avoid duplicating any information that is already present in the <sav
 
 If you encounter any unclear or ambiguous information in the logs, make a best effort to interpret it based on the context of the test case and current step. If you cannot confidently extract relevant data from a particular log entry, it's better to omit it than to include potentially incorrect information.
 
-Please provide your list of relevant data entries, ensuring each entry is wrapped in <relevant_data> tags as shown in the example above.
+If there is nothing relevant to save, just return an empty list.

@@ -8,9 +8,7 @@ You are provided with the following inputs:
 {current_step}
 </current_step>
 
-<history>
 {history}
-</history>
 
 Plan for the current test step by following these instructions:
 
@@ -23,7 +21,8 @@ Plan for the current test step by following these instructions:
 4. Convert the test step into a sequence of Act and Assert statements. Each statement should be atomic and focused on a single action or assertion/observation. Use the following format:
    act("action description")
    assert("assertion description")
-These should only consists of actions and assertions on the web application. Act workers can only do clicks / typing / gotos / scrolling. Assert workers only get a screenshot of the current state of the application.
+These should only consists of actions and assertions on the web application. Act workers can only do clicks / typing / gotos / scrolling. Assert workers only get a screenshot of the current state of the application and verify whether their query is true.
+Make sure your act/assert planning is chronologically correct.
 
 5. Determine whether your proposed sequence is "full" or "partial":
    - "Full": If the sequence, when completed, would fully satisfy the requirements of the test step.

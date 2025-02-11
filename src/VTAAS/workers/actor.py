@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 import os
 from typing import TypeGuard, final, override
 
@@ -48,6 +49,7 @@ class Actor(Worker):
         self.query = query
         self.max_rounds = max_rounds
         self.logger = get_logger("Actor " + self.id[:8], self.start_time)
+        # self.logger.setLevel(logging.DEBUG)
         self.logger.info(f"Initialized with query: {self.query}")
 
     @override
@@ -84,7 +86,6 @@ class Actor(Worker):
                     content=response.model_dump_json(),
                 )
             )
-            # action = self.command_to_str(command)
             outcome = f"Browser response:\n{await self.run_command(command)}"
             self.actions.append(
                 ActorAction(action=outcome, chain_of_thought=response.get_cot())
@@ -162,13 +163,13 @@ class Actor(Worker):
             "./src/VTAAS/workers/actor_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
             prompt_template = prompt_file.read()
-
-        # current_step = input.test_step[0] + "; " + input.test_step[1]
-
+        history = (
+            "<previous_actions>\n" + input.history + "\n</previous_actions>"
+            if input.history is not None
+            else ""
+        )
         return prompt_template.format(
-            # test_case=input.test_case,
-            # current_step=current_step,
-            history=input.history,
+            history=history,
             query=self.query,
         )
 
