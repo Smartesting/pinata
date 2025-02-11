@@ -133,11 +133,18 @@ class LLMActResponse(BaseModel):
         return str(data)
 
 
+class CommandType(str, Enum):
+    click = "click"
+    goto = "goto"
+    fill = "fill"
+    select = "select"
+    scroll = "scroll"
+    finish = "finish"
+
+
 class GoogleCommand(BaseModel):
-    name: Literal["click", "goto", "fill", "select", "scroll", "finish"] = Field(
-        ..., description="the type of command"
-    )
-    args: tuple[str, str] = Field(..., description="the command args")
+    name: CommandType
+    args: list[list[str]] = Field(..., description="the command args")
 
 
 class LLMActResponseGoogle(BaseModel):
@@ -147,7 +154,13 @@ class LLMActResponseGoogle(BaseModel):
     screenshot_analysis: str
     query_progress: str
     next_action: str
-    command: GoogleCommand = Field(..., description="Command to perform on the web app")
+    # command: GoogleCommand = Field(..., description="Command to perform on the web app")
+    click: ClickCommand | None = None
+    goto: GotoCommand | None = None
+    fill: FillCommand | None = None
+    select: SelectCommand | None = None
+    scroll: ScrollCommand | None = None
+    finish: FinishCommand | None = None
 
 
 class LLMAssertResponse(BaseModel):

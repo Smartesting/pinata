@@ -20,7 +20,7 @@ async def test_one_TC():
             "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
         )
         test_case = test_collection.get_test_case_by_id("1")
-        orchestrator = Orchestrator(browser=browser, llm_provider=LLMProviders.GOOGLE)
+        orchestrator = Orchestrator(browser=browser, llm_provider=LLMProviders.OPENAI)
 
         _ = await orchestrator.process_testcase(test_case)
     # Initialize workers based on a specific task

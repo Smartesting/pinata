@@ -32,45 +32,41 @@ from ..utils.logger import get_logger
 from ..utils.config import load_config
 import sys
 
-logger = get_logger(__name__)
-
 
 @final
 class OpenAILLMClient(LLMClient):
     """Communication with OpenAI"""
 
-    def __init__(self):
+    def __init__(self, start_time: float):
         load_config()
+        self.start_time = start_time
+        self.logger = get_logger(__name__, self.start_time)
         try:
             self.aclient = AsyncOpenAI()
         except OpenAIError as e:
-            logger.fatal(e, exc_info=True)
+            self.logger.fatal(e, exc_info=True)
             sys.exit(1)
 
     @override
     async def plan_step(self, conversation: list[Message]) -> LLMTestStepPlanResponse:
         """Get list of act/assert workers from LLM."""
         try:
-            logger.info(f"Init Plan Step Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Init Plan Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMTestStepPlanResponse,
             )
-            logger.info(f"Model Plan response:\n{response.choices[0].message.content}")
             llm_response = LLMTestStepPlanResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
-            logger.info(
+            self.logger.info(
                 f"Orchestrator Plan response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            logger.info(
-                f"Received {len(llm_response.workers)} worker configurations from LLM"
             )
             return llm_response
 
         except Exception as e:
-            logger.error(f"Error getting worker configurations: {str(e)}")
+            self.logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
     @override
@@ -79,7 +75,9 @@ class OpenAILLMClient(LLMClient):
     ) -> LLMTestStepFollowUpResponse:
         """Update list of act/assert workers from LLM."""
         try:
-            logger.info(f"FollowUp Plan Step Message:\n{conversation[-1].content}")
+            self.logger.debug(
+                f"FollowUp Plan Step Message:\n{conversation[-1].content}"
+            )
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
@@ -88,16 +86,13 @@ class OpenAILLMClient(LLMClient):
             llm_response = LLMTestStepFollowUpResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
-            logger.info(
+            self.logger.info(
                 f"Orchestrator Follow-Up response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            logger.info(
-                f"Follow-Up: Received {len(llm_response.workers)} new worker configurations from LLM"
             )
             return llm_response
 
         except Exception as e:
-            logger.error(f"Error getting worker configurations: {str(e)}")
+            self.logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
     @override
@@ -106,7 +101,7 @@ class OpenAILLMClient(LLMClient):
     ) -> LLMTestStepRecoverResponse:
         """Update list of act/assert workers from LLM."""
         try:
-            logger.info(f"Recover Step Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
@@ -115,27 +110,27 @@ class OpenAILLMClient(LLMClient):
             llm_response = LLMTestStepRecoverResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
-            logger.info(
+            self.logger.info(
                 f"Orchestrator Recover response:\n{llm_response.model_dump_json(indent=4)}"
             )
             if llm_response.plan:
-                logger.info(
+                self.logger.info(
                     f"[Recover] Received {len(llm_response.plan.workers)} worker configurations from LLM"
                 )
             else:
-                logger.info("[Recover] Test step is considered FAIL")
+                self.logger.info("[Recover] Test step is considered FAIL")
 
             return llm_response
 
         except Exception as e:
-            logger.error(f"Error getting worker configurations: {str(e)}")
+            self.logger.error(f"Error getting worker configurations: {str(e)}")
             raise
 
     @override
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
         try:
-            logger.info(f"Actor User Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
@@ -146,22 +141,22 @@ class OpenAILLMClient(LLMClient):
             llm_response = LLMActResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
-            logger.info(
+            self.logger.info(
                 f"Received Actor response {llm_response.model_dump_json(indent=4)}"
             )
             return llm_response
 
         except Exception as e:
-            logger.error(f"Error in act call: {str(e)}")
+            self.logger.error(f"Error in act call: {str(e)}")
             raise
 
     @override
     async def assert_(self, conversation: list[Message]) -> LLMAssertResponse:
         """Assertor call"""
         try:
-            logger.info(f"Assertor User Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o-mini",
+                model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMAssertResponse,
             )
@@ -170,13 +165,13 @@ class OpenAILLMClient(LLMClient):
             llm_response = LLMAssertResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
-            logger.info(
+            self.logger.info(
                 f"Received Assertor response {llm_response.model_dump_json(indent=4)}"
             )
             return llm_response
 
         except Exception as e:
-            logger.error(f"Error in assert call: {str(e)}")
+            self.logger.error(f"Error in assert call: {str(e)}")
             raise
 
     @override
@@ -194,7 +189,7 @@ class OpenAILLMClient(LLMClient):
                 ),
             ]
             response = await self.aclient.beta.chat.completions.parse(
-                model="gpt-4o-mini",
+                model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
                 response_format=LLMSynthesisResponse,
             )
@@ -205,13 +200,13 @@ class OpenAILLMClient(LLMClient):
                 ast.literal_eval(response.choices[0].message.content or "")
             )
 
-            logger.info(
+            self.logger.info(
                 f"Received Synthesis response:\n{llm_response.model_dump_json(indent=4)}"
             )
             return llm_response
 
         except Exception as e:
-            logger.error(f"Error in assert call: {str(e)}")
+            self.logger.error(f"Error in assert call: {str(e)}")
             raise
 
     def _to_openai_messages(

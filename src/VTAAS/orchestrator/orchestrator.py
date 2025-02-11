@@ -1,3 +1,5 @@
+import logging
+import time
 from dataclasses import dataclass, field
 from typing import TypedDict, Unpack
 from VTAAS.llm.llm_client import LLMClient, LLMProviders
@@ -28,8 +30,6 @@ from ..schemas.worker import (
     WorkerType,
 )
 
-logger = get_logger(__name__)
-
 
 @dataclass
 class TestExecutionContext:
@@ -45,7 +45,7 @@ class OrchestratorParams(TypedDict, total=False):
 
 
 class Orchestrator:
-    """Orchestrator class to manage actors and assertors."""
+    """Orchestrator class to spawn and run actors and assertors."""
 
     def __init__(self, **kwargs: Unpack[OrchestratorParams]):
         default_params: OrchestratorParams = {
@@ -65,24 +65,29 @@ class Orchestrator:
         self.active_workers: list[Worker] = []
         self._browser: Browser | None = self.params["browser"]
         self.llm_provider: LLMProviders = self.params["llm_provider"]
-        self.llm_client: LLMClient = create_llm_client(self.llm_provider)
+        self.start_time: float = time.time()
+        self.logger: logging.Logger = get_logger("Orchestrator", self.start_time)
+        self.logger.debug("Orchestrator initialized")
+        self.llm_client: LLMClient = create_llm_client(
+            self.llm_provider, self.start_time
+        )
         self._exec_context: TestExecutionContext | None = None
         self._followup_prompt: str | None = None
         self._recover_prompt: str | None = None
         self.worker_reports: dict[str, list[str]] = {}
         self.worker_counter: dict[str, int] = {"actor": 0, "assertor": 0}
         self.conversation: list[Message] = []
-        logger.info("Orchestrator initialized")
 
     async def process_testcase(self, test_case: TestCase) -> TestCaseVerdict:
         """Manages the main execution loop for the given Test Case."""
-
-        logger.info(f"Processing {test_case.name}")
+        self.logger.info(f"Processing test case {test_case.name}")
         exec_context = TestExecutionContext(
             test_case=test_case, current_step=test_case.get_step(1), step_index=1
         )
         if self._browser is None:
-            self._browser = await Browser.create(timeout=3500, headless=True)
+            self._browser = await Browser.create(
+                timeout=3500, headless=True, start_time=self.start_time
+            )
         _ = await self.browser.goto(exec_context.test_case.url)
         verdict = BaseResult(status=Status.UNK)
         for idx, test_step in enumerate(test_case):
@@ -90,6 +95,12 @@ class Orchestrator:
             exec_context.step_index = idx + 1
             verdict = await self.process_step(exec_context)
             if verdict.status != Status.PASS:
+                self.logger.info(
+                    (
+                        f"Test case FAILED at step {exec_context.step_index}."
+                        f" {exec_context.current_step[0]} -> {exec_context.current_step[1]}"
+                    )
+                )
                 return TestCaseVerdict(
                     status=Status.FAIL, step_index=idx, explaination=None
                 )
@@ -100,14 +111,22 @@ class Orchestrator:
                 exec_context, verdict.history, exec_context.synthesis
             )
             exec_context.synthesis.append(step_str)
-            exec_context.synthesis.append(self.synthesis_str(step_synthesis))
+            exec_context.synthesis.append(Orchestrator.synthesis_str(step_synthesis))
 
         return TestCaseVerdict(status=Status.PASS, explaination=None)
 
-    async def process_step(self, exec_context: TestExecutionContext) -> TestStepVerdict:
+    async def process_step(
+        self, exec_context: TestExecutionContext, max_tries: int = 4
+    ) -> TestStepVerdict:
         screenshot = await self.browser.screenshot()
         results: list[WorkerResult] = []
         step_history: list[str | tuple[str, list[bytes]]] = []
+        self.logger.info(
+            (
+                f"Planning for test step "
+                f"{exec_context.step_index}. {exec_context.current_step[0][:20]} => {exec_context.current_step[1][:20]}"
+            )
+        )
         sequence_type = await self.plan_step_init(exec_context, screenshot)
         step_history.append(
             (
@@ -115,8 +134,10 @@ class Orchestrator:
                 f"{exec_context.current_step[0]} => {exec_context.current_step[1]}"
             )
         )
-        for i in range(4):
-            logger.info(f"step #{exec_context.step_index}: processing iteration {i}")
+        for i in range(max_tries):
+            self.logger.info(
+                f"step #{exec_context.step_index}: processing iteration {i}"
+            )
             results = await self.execute_step(exec_context)
             success = not any(verdict.status != Status.PASS for verdict in results)
             if sequence_type == SequenceType.full and success:
@@ -130,9 +151,14 @@ class Orchestrator:
                 recovery = await self.plan_step_recover(workers_result)
                 step_history.append("Orchestrator: Came up with a recovery solution")
                 if not recovery:
+                    self.logger.info("No recovery solution found -> Test step FAIL")
                     return TestStepVerdict(status=Status.FAIL, history=step_history)
                 else:
                     sequence_type = recovery
+
+        self.logger.info(
+            f"{max_tries} failed attempts at performing step #{exec_context.step_index} -> Test step FAIL"
+        )
         return TestStepVerdict(status=Status.FAIL, history=step_history)
 
     async def plan_step_init(
@@ -149,7 +175,7 @@ class Orchestrator:
         )
         for config in response.workers:
             _ = self.spawn_worker(config)
-        logger.info(f"Initialized {len(self.active_workers)} new workers")
+        self.logger.debug(f"Initialized {len(self.active_workers)} new workers")
         return response.sequence_type
 
     async def plan_step_followup(
@@ -175,7 +201,7 @@ class Orchestrator:
         )
         for config in response.workers:
             _ = self.spawn_worker(config)
-        logger.info(f"Initialized {len(self.active_workers)} new workers")
+        self.logger.info(f"Initialized {len(self.active_workers)} new workers")
         return response.sequence_type
 
     async def plan_step_recover(
@@ -203,7 +229,7 @@ class Orchestrator:
             return False
         for config in response.plan.workers:
             _ = self.spawn_worker(config)
-        logger.info(f"Initialized {len(self.active_workers)} new workers")
+        self.logger.info(f"Initialized {len(self.active_workers)} new workers")
         return response.plan.sequence_type
 
     async def execute_step(
@@ -306,11 +332,15 @@ class Orchestrator:
         worker: Worker
         match config.type:
             case WorkerType.ACTOR:
-                worker = Actor(config.query, self.browser, self.llm_provider)
+                worker = Actor(
+                    config.query, self.browser, self.llm_provider, self.start_time
+                )
                 self.workers.append(worker)
                 self.active_workers.append(worker)
             case WorkerType.ASSERTOR:
-                worker = Assertor(config.query, self.browser, self.llm_provider)
+                worker = Assertor(
+                    config.query, self.browser, self.llm_provider, self.start_time
+                )
                 self.workers.append(worker)
                 self.active_workers.append(worker)
         return worker
@@ -319,17 +349,16 @@ class Orchestrator:
         self,
         context: TestExecutionContext,
         screenshot: bytes,
-        history: str | None = None,
     ):
         self.conversation = [
             Message(role=MessageRole.System, content=self._build_system_prompt()),
             Message(
                 role=MessageRole.User,
-                content=self._build_user_init_prompt(context, history),
+                content=self._build_user_init_prompt(context),
                 screenshot=[screenshot],
             ),
         ]
-        logger.debug(f"User prompt:\n{self.conversation[1].content}")
+        self.logger.debug(f"User prompt:\n{self.conversation[1].content}")
 
     def _build_system_prompt(self) -> str:
         with open(
@@ -338,9 +367,7 @@ class Orchestrator:
             prompt_template = prompt_file.read()
         return prompt_template
 
-    def _build_user_init_prompt(
-        self, exec_context: TestExecutionContext, history: str | None = None
-    ) -> str:
+    def _build_user_init_prompt(self, exec_context: TestExecutionContext) -> str:
         with open(
             "./src/VTAAS/orchestrator/init_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
@@ -351,7 +378,7 @@ class Orchestrator:
             f"{exec_context.step_index}. action: {action}, assertion: {assertion}"
         )
         return prompt_template.format(
-            test_case=test_case, current_step=test_step, history=history
+            test_case=test_case, current_step=test_step, history=exec_context.synthesis
         )
 
     def _build_synthesis_prompt(
@@ -371,7 +398,8 @@ class Orchestrator:
             execution_logs=step_history,
         )
 
-    def synthesis_str(self, synthesis: list[SynthesisEntry]):
+    @staticmethod
+    def synthesis_str(synthesis: list[SynthesisEntry]):
         output: str = ""
         for entry in synthesis:
             output += " ----- \n"

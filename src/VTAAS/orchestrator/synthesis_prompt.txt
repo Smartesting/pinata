@@ -10,7 +10,7 @@ The current test step being executed is:
 {current_step}
 </current_step>
 
-You have been provided with the raw execution logs of act and assert workers, including their chain-of-thoughts and corresponding screenshots of the web application. These logs are contained in the following:
+A group of actors and assertor workers have been attempting to perform the current test step, here are their logs, including their chain-of-thoughts and corresponding screenshots of the web application:
 <execution_logs>
 {execution_logs}
 </execution_logs>
@@ -19,50 +19,38 @@ The following data has already been saved from previous steps:
 <saved_data>
 {saved_data}
 </saved_data>
-
-Your task is to carefully analyze the execution logs and extract any relevant information that could be useful for the orchestrator in subsequent test steps. This information should not duplicate what has already been saved.
-
-As you analyze the logs, look for the following types of information:
-1. Element identifiers (IDs, classes, names) used to interact with the web application
-2. Text content of important elements (e.g., headers, labels, button text)
-3. URLs of pages visited during the test
-4. State changes in the application (e.g., logged in/out, language changes)
-5. Error messages or unexpected behaviors encountered
-6. Timing information for important actions or page loads
-7. Any other data that could be relevant for future test steps
+:
+Your task is to carefully analyze the execution logs and extract any relevant information that could be useful for the orchestrator in subsequent test steps:
+1. Input data used to fill forms
+2. Previous content of form / dialog elements (if needed later on)
+3. Solutions for any navigation difficulty the workers previously encountered but eventually solved
+4. Planning tips if the same action needs to be done twice in the test case
+5. Any other data that could be relevant for future test steps
 
 For each piece of relevant information you find, create an entry in the following format:
 <relevant_data>
-<type>Type of information (e.g., element_id, text_content, url, state_change, error, timing, other)</type>
+<type>Type of information (e.g., test_data, previous_content, planning_tip, navigation_tip)</type>
 <description>Brief description of the information</description>
 <value>The actual value or content found</value>
 </relevant_data>
 
-Here are some examples of the kind of data you should look for:
-
 <example>
 <relevant_data>
-<type>element_id</type>
-<description>Username input field ID</description>
-<value>user_login</value>
+<type>test_data</type>
+<description>city used in registration form</description>
+<value>Cincinnati, OH</value>
 </relevant_data>
 
 <relevant_data>
-<type>text_content</type>
-<description>Welcome message after login</description>
-<value>Welcome, Admin User!</value>
+<type>navigation_tip</type>
+<description>accessing the handtool category</description>
+<value>The worker should first hover the tool menu at the top then click the handtool submenu</value>
 </relevant_data>
 
 <relevant_data>
-<type>url</type>
-<description>Dashboard URL</description>
-<value>https://example.com/dashboard</value>
-</relevant_data>
-
-<relevant_data>
-<type>state_change</type>
-<description>User login status</description>
-<value>logged_in</value>
+<type>previous_data</type>
+<description>The initial value of the user's profile Age must be saved as it is asked to restore the initial value in a subsequent step</description>
+<value>25</value>
 </relevant_data>
 </example>
 

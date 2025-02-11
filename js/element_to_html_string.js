@@ -1,7 +1,7 @@
 function elementToHtmlString(element) {
   const attributes = Array.from(element.attributes)
     .map((attr) =>
-      ["data-som"].includes(attr.name) ? "" : `${attr.name}="${attr.value}"`,
+      ["data-mark"].includes(attr.name) ? "" : `${attr.name}="${attr.value}"`,
     )
     .join(" ");
   if (element.tagName.toLowerCase() === "select") {

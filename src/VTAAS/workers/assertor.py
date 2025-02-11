@@ -3,10 +3,10 @@ from typing import TypeGuard, final, override
 from VTAAS.llm.llm_client import LLMProviders
 from VTAAS.llm.utils import create_llm_client
 from VTAAS.utils.banner import add_banner
+from VTAAS.utils.logger import get_logger
 
 from ..schemas.verdict import AssertorResult
 from ..workers.browser import Browser
-from ..utils.logger import get_logger
 from ..schemas.worker import (
     AssertorInput,
     Message,
@@ -16,18 +16,24 @@ from ..schemas.worker import (
     WorkerType,
 )
 
-logger = get_logger(__name__)
-
 
 @final
 class Assertor(Worker):
     """Assertor implementation."""
 
-    def __init__(self, query: str, browser: Browser, llm_provider: LLMProviders):
+    def __init__(
+        self,
+        query: str,
+        browser: Browser,
+        llm_provider: LLMProviders,
+        start_time: float,
+    ):
         super().__init__(query, browser)
         self.type = WorkerType.ASSERTOR
-        self.llm_client = create_llm_client(llm_provider)
-        logger.info(f"Assertor {self.id[:8]} initialized with query: {self.query}")
+        self.start_time = start_time
+        self.llm_client = create_llm_client(llm_provider, start_time)
+        self.logger = get_logger("Assertor " + self.id[:8], self.start_time)
+        self.logger.info(f"initialized with query: {self.query}")
 
     @override
     async def process(self, input: WorkerInput) -> AssertorResult:
@@ -35,7 +41,7 @@ class Assertor(Worker):
             raise TypeError("Expected input of type AssertorInput")
         screenshot = await self.browser.screenshot()
         self._setup_conversation(input, screenshot)
-        logger.info(f"Assertor {self.id[:8]} processing query '{self.query}'")
+        self.logger.info(f"\n\nprocessing query '{self.query}'")
         response = await self.llm_client.assert_(self.conversation)
         return AssertorResult(
             query=self.query,
@@ -57,7 +63,7 @@ class Assertor(Worker):
                 screenshot=[screenshot],
             ),
         ]
-        logger.debug(f"User prompt:\n\n{self.conversation[1].content}")
+        self.logger.debug(f"User prompt:\n\n{self.conversation[1].content}")
 
     def _build_user_prompt(self, input: AssertorInput) -> str:
         with open(

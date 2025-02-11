@@ -5,6 +5,7 @@ from typing import TypeGuard, final, override
 from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.llm.utils import create_llm_client
 from VTAAS.utils.banner import add_banner
+from VTAAS.utils.logger import get_logger
 
 from ..schemas.llm import (
     ClickCommand,
@@ -16,7 +17,7 @@ from ..schemas.llm import (
     SelectCommand,
 )
 from ..schemas.verdict import ActorAction, ActorResult, Status, WorkerResult
-from ..workers.browser import Browser
+from ..workers.browser import Browser, Mark
 from ..schemas.worker import (
     ActorInput,
     Message,
@@ -25,9 +26,6 @@ from ..schemas.worker import (
     WorkerInput,
     WorkerType,
 )
-from ..utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
 @final
@@ -39,15 +37,18 @@ class Actor(Worker):
         query: str,
         browser: Browser,
         llm_provider: LLMProviders,
+        start_time: float,
         max_rounds: int = 4,
     ):
         super().__init__(query, browser)
         self.type = WorkerType.ACTOR
-        self.llm_client: LLMClient = create_llm_client(llm_provider)
+        self.start_time = start_time
+        self.llm_client: LLMClient = create_llm_client(llm_provider, start_time)
         self.actions: list[ActorAction] = []
         self.query = query
         self.max_rounds = max_rounds
-        logger.info(f"Actor {self.id[:8]} initialized with query: {self.query}")
+        self.logger = get_logger("Actor " + self.id[:8], self.start_time)
+        self.logger.info(f"Initialized with query: {self.query}")
 
     @override
     async def process(self, input: WorkerInput) -> WorkerResult:
@@ -56,17 +57,18 @@ class Actor(Worker):
             raise TypeError("Expected input of type ActorInput")
         await self.browser.mark_page()
         screenshot = await self.browser.screenshot()
-        self._setup_conversation(input, screenshot)
+        marks: list[Mark] = await self.browser.get_marks()
+        self._setup_conversation(input, screenshot, marks)
         verdict: WorkerResult | None = None
         round = 0
-        logger.info(f"Actor {self.id[:8]} processing query '{self.query}'")
+        self.logger.info(f"Actor {self.id[:8]} processing query '{self.query}'")
         while verdict is None and round < self.max_rounds:
             round += 1
             response = await self.llm_client.act(self.conversation)
             command = response.command
             if command.name == "finish":
-                logger.info(
-                    f'Actor {self.id[:8]} ("{self.query}") is DONE: {command.status} - {command.reason or "No reason"}'
+                self.logger.info(
+                    f'("{self.query}") is DONE: {command.status} - {command.reason or "No reason"}'
                 )
                 verdict = ActorResult(
                     query=self.query,
@@ -87,10 +89,13 @@ class Actor(Worker):
             self.actions.append(
                 ActorAction(action=outcome, chain_of_thought=response.get_cot())
             )
+            self.logger.info(outcome)
+            await self.browser.unmark_page()
             await self.browser.mark_page()
             screenshot = await self.browser.screenshot()
-            await self.browser.unmark_page()
-            logger.info(outcome)
+            marks_str = "\n" + self._format_marks(await self.browser.get_marks())
+            self.logger.debug(marks_str)
+            outcome += marks_str
             outcome += f'\nIs the task "{self.query}" now complete?'
             self.conversation.append(
                 Message(role=MessageRole.User, content=outcome, screenshot=[screenshot])
@@ -122,16 +127,20 @@ class Actor(Worker):
     def system_prompt(self) -> str:
         return "You are part of a multi-agent systems. Your role is to perform the provided query on a web application"
 
-    def _setup_conversation(self, input: ActorInput, screenshot: bytes):
+    def _setup_conversation(
+        self, input: ActorInput, screenshot: bytes, marks: list[Mark]
+    ):
         self.conversation = [
             Message(role=MessageRole.System, content=self.system_prompt),
             Message(
                 role=MessageRole.User,
-                content=self._build_user_prompt(input),
+                content=self._build_user_prompt(input)
+                + "\n"
+                + self._format_marks(marks),
                 screenshot=[screenshot],
             ),
         ]
-        logger.debug(f"User prompt:\n\n{self.conversation[1].content}")
+        self.logger.debug(f"User prompt:\n\n{self.conversation[1].content}")
 
     def _is_actor_input(self, input: WorkerInput) -> TypeGuard[ActorInput]:
         return isinstance(input, ActorInput)
@@ -162,3 +171,9 @@ class Actor(Worker):
             history=input.history,
             query=self.query,
         )
+
+    def _format_marks(self, marks: list[Mark]) -> str:
+        output = "The labels on the screenshot correspons to these html elements\n:"
+        for m in marks:
+            output += f"{m['mark']}. {m['element']}\n"
+        return output

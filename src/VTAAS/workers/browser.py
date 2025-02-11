@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import time
 from typing import (
     Literal,
     NotRequired,
@@ -15,7 +16,6 @@ import playwright.async_api as pw
 from urllib.parse import urlparse
 from VTAAS.utils.logger import get_logger
 
-logger = get_logger(__name__)
 T = TypeVar("T", bound="Browser")
 
 ScrollDirection: TypeAlias = Literal["up", "down"]
@@ -36,6 +36,7 @@ class BrowserParams(TypedDict, total=False):
     timeout: int
     id: str
     save_screenshot: bool
+    start_time: float
 
 
 class ScreenshotResult(TypedDict):
@@ -64,6 +65,7 @@ class Browser:
             "id": uuid4().hex,
             "playwright": None,
             "save_screenshot": False,
+            "start_time": time.time(),
         }
         custom_params = kwargs
         if custom_params and set(custom_params.keys()).issubset(
@@ -78,7 +80,8 @@ class Browser:
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
-        logger.info(f"Browser {self.id} instanciated")
+        self.logger = get_logger(__name__, self._params["start_time"])
+        self.logger.info(f"Browser {self.id} instanciated")
 
     async def initialize(self) -> None:
         """Initialize the browser instance"""
@@ -93,7 +96,7 @@ class Browser:
 
         self._page.on("load", lambda load: self.load_js())
         self._page.on("framenavigated", lambda load: self.load_js())
-        logger.info(f"Browser {self.id} started")
+        self.logger.info(f"Browser {self.id} started")
 
     async def load_js(self):
         _ = await self.page.add_script_tag(path="./js/mark_page.js")
@@ -152,7 +155,7 @@ class Browser:
                 status = response.status if response else "unknown"
                 return f"Navigate to {url} but page return an {status} status"
         except Exception as e:
-            logger.error(f"Navigation error: {str(e)}")
+            self.logger.error(f"Navigation error: {str(e)}")
             return f"An error happened while navigating to {url}"
 
     async def reload(self) -> str:
@@ -165,7 +168,7 @@ class Browser:
                 status = response.status if response else "unknown"
                 return f"Reloaded url {url} but received a {status} status"
         except Exception as e:
-            logger.error(f"Reload error: {str(e)}")
+            self.logger.error(f"Reload error: {str(e)}")
             return f"An error happened while reloading url {url}"
 
     async def click(self, mark: str) -> str:
@@ -268,7 +271,7 @@ class Browser:
 
         except Exception as e:
             error_msg = f"An error happened while scrolling {pixels} {direction}"
-            logger.error(f"{error_msg}: {str(e)}")
+            self.logger.error(f"{error_msg}: {str(e)}")
             return error_msg
 
     async def select(self, mark: str, *values: str) -> str:
@@ -320,7 +323,7 @@ class Browser:
             return screenshot
 
         except Exception as e:
-            logger.error(f"Screenshot error: {str(e)}")
+            self.logger.error(f"Screenshot error: {str(e)}")
             return b""
 
     def _save_screenshot(self, screenshot: bytes):

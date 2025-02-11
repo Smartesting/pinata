@@ -5,16 +5,17 @@ import re
 import sys
 import json
 import argparse
+import time
 from typing import override
 from collections.abc import Sequence
+
+from google.genai.types import logging
 
 # Add parent directory to path for relative imports when running as script
 if __name__ == "__main__":
     sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from VTAAS.utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
 class TestCase:
@@ -26,6 +27,8 @@ class TestCase:
         url: str,
         failing_info: None | tuple[int, str],
     ):
+        self.start_time: float = time.time()
+        self.logger: logging.Logger = get_logger(__name__, self.start_time)
         self._full_name: str = full_name
         self._parse_full_name(full_name)
         self.actions: list[str] = actions
@@ -37,7 +40,7 @@ class TestCase:
 
         if self.type == "F":
             if not failing_info:
-                logger.warning(
+                self.logger.warning(
                     f"Test Case {self.id} is of type failing but does not have failing info"
                 )
             else:
@@ -111,7 +114,8 @@ class TestCaseCollection:
         self.url: str = url
         self.test_cases: list[TestCase] = []
         self._parse_file()
-        logger.info(self)
+        self.start_time: float = time.time()
+        self.logger: logging.Logger = get_logger(__name__, self.start_time)
 
     def _get_file_name(self) -> str:
         """
@@ -174,7 +178,7 @@ class TestCaseCollection:
                             case "Expected Failure" | "":
                                 continue
                             case "Fail":
-                                logger.critical(
+                                self.logger.critical(
                                     f"Malformed TC number {current_test_case}. Check if the title of the next test is properly formatted"
                                 )
                                 break
@@ -182,7 +186,7 @@ class TestCaseCollection:
                                 if not msg_candidate:
                                     msg_candidate = (int(row[0]), failing_row)
                                 else:
-                                    logger.warning(
+                                    self.logger.warning(
                                         f"{current_test_case} has more than one failing information. Taking the first one by default"
                                     )
 
@@ -307,7 +311,7 @@ def main():
             print(json_output)
 
     except Exception as e:
-        logger.error(f"Error processing file: {str(e)}")
+        self.logger.error(f"Error processing file: {str(e)}")
         sys.exit(1)
 
 
