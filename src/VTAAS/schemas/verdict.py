@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +46,7 @@ class TestStepVerdict(BaseResult):
 
 
 class TestCaseVerdict(BaseResult):
-    step_index: int = None
+    step_index: int = None  # type: ignore
 
 
 WorkerResult = ActorResult | AssertorResult
@@ -55,4 +54,4 @@ WorkerResult = ActorResult | AssertorResult
 
 class AssertionVerdict(BaseModel):
     status: Status = Field(..., description="Verdict Status")
-    discrepancies: str = None  # noqa
+    discrepancies: str = None  # type: ignore
