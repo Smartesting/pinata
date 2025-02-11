@@ -105,7 +105,7 @@ class ScrollCommand(BaseModel):
 class FinishCommand(BaseModel):
     name: Literal["finish"]
     status: Status
-    reason: str | None
+    reason: str = None
 
 
 Command = (

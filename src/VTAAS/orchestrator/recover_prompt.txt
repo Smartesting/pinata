@@ -23,3 +23,4 @@ If you decided to continue with a new sequence (partial or full) to continue pro
 
 Remember, your goal is to make the best decision for the test execution based on the available information and to provide clear, actionable guidance for the next steps or a well-justified conclusion to the test case.
 Please do not diverge from the test step. Accomplishing it should be straightforward. If it not possible, probably best to assign a failed verdict a call it a day.
+Labels are ephemeral, do not use them to guide your workers if you noticed they used the wrong label. Instead, give them precise spatial information.

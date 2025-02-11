@@ -2,6 +2,7 @@ import ast
 import base64
 from collections.abc import Iterable
 import json
+import logging
 from typing import final, override
 
 from anthropic import AsyncAnthropic
@@ -37,6 +38,7 @@ class AnthropicLLMClient(LLMClient):
         load_config()
         self.start_time = start_time
         self.logger = get_logger(__name__, self.start_time)
+        # self.logger.setLevel(logging.DEBUG)
         try:
             self.aclient = AsyncAnthropic(max_retries=4)
         except Exception as e:
@@ -47,29 +49,29 @@ class AnthropicLLMClient(LLMClient):
     async def plan_step(self, conversation: list[Message]) -> LLMTestStepPlanResponse:
         """Get list of act/assert workers from LLM."""
         try:
-            self.logger.info(f"Init Plan Step Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Init Plan Step Message:\n{conversation[-1].content}")
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
                 LLMTestStepPlanResponse
             )
-            # preshot_assistant = Message(
-            #     role=MessageRole.Assistant,
-            #     content=AnthropicLLMClient.build_json_start(LLMTestStepPlanResponse),
-            # )
-            # conversation.append(preshot_assistant)
+            conversation[-1].content += expected_format
+            preshot_assistant = Message(
+                role=MessageRole.Assistant,
+                content='{"',
+            )
+            conversation.append(preshot_assistant)
             response = await self.aclient.messages.create(
                 max_tokens=1000,
                 model="claude-3-5-sonnet-latest",
-                messages=AnthropicLLMClient.to_anthropic_messages(
-                    conversation, expected_format
-                ),
+                messages=AnthropicLLMClient.to_anthropic_messages(conversation),
             )
             if len(response.content) == 0:
                 raise ValueError("PLAN - anthropic response is empty")
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("PLAN - anthropic response is not text")
+            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
             llm_response = LLMTestStepPlanResponse.model_validate(
-                ast.literal_eval(outcome.text or "")
+                ast.literal_eval(response_str)
             )
             self.logger.info(
                 f"Orchestrator Plan response:\n{llm_response.model_dump_json(indent=4)}"
@@ -86,28 +88,34 @@ class AnthropicLLMClient(LLMClient):
     ) -> LLMTestStepFollowUpResponse:
         """Update list of act/assert workers from LLM."""
         try:
-            self.logger.info(f"FollowUp Plan Step Message:\n{conversation[-1].content}")
+            self.logger.debug(
+                f"FollowUp Plan Step Message:\n{conversation[-1].content}"
+            )
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
                 LLMTestStepFollowUpResponse
             )
+            conversation[-1].content += expected_format
+            preshot_assistant = Message(
+                role=MessageRole.Assistant,
+                content='{"',
+            )
+            conversation.append(preshot_assistant)
             response = await self.aclient.messages.create(
                 max_tokens=1000,
                 model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation, expected_format),
+                messages=self.to_anthropic_messages(conversation),
             )
             if len(response.content) == 0:
                 raise ValueError("FOLLOWUP - anthropic response is empty")
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("FOLLOWUP - anthropic response is not text")
+            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
             llm_response = LLMTestStepFollowUpResponse.model_validate(
-                ast.literal_eval(outcome.text or "")
+                ast.literal_eval(response_str or "")
             )
             self.logger.info(
                 f"Orchestrator Follow-Up response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            self.logger.info(
-                f"Follow-Up: Received {len(llm_response.workers)} new worker configurations from LLM"
             )
             return llm_response
 
@@ -121,22 +129,29 @@ class AnthropicLLMClient(LLMClient):
     ) -> LLMTestStepRecoverResponse:
         """Update list of act/assert workers from LLM."""
         try:
-            self.logger.info(f"Recover Step Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
                 LLMTestStepRecoverResponse
             )
+            conversation[-1].content += expected_format
+            preshot_assistant = Message(
+                role=MessageRole.Assistant,
+                content='{"',
+            )
+            conversation.append(preshot_assistant)
             response = await self.aclient.messages.create(
                 max_tokens=1000,
                 model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation, expected_format),
+                messages=self.to_anthropic_messages(conversation),
             )
             if len(response.content) == 0:
                 raise ValueError("RECOVER - anthropic response is empty")
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("RECOVER - anthropic response is not text")
+            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
             llm_response = LLMTestStepRecoverResponse.model_validate(
-                ast.literal_eval(outcome.text or "")
+                ast.literal_eval(response_str or "")
             )
             self.logger.info(
                 f"Orchestrator Recover response:\n{llm_response.model_dump_json(indent=4)}"
@@ -158,26 +173,30 @@ class AnthropicLLMClient(LLMClient):
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
         try:
-            self.logger.info(f"Actor User Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
                 LLMActResponse
             )
+            conversation[-1].content += expected_format
+            preshot_assistant = Message(
+                role=MessageRole.Assistant,
+                content='{"',
+            )
+            conversation.append(preshot_assistant)
             response = await self.aclient.messages.create(
                 max_tokens=1000,
                 model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation, expected_format),
-                # response_format=LLMActResponse,
+                messages=self.to_anthropic_messages(conversation),
             )
             if len(response.content) == 0:
                 raise ValueError("ACT - anthropic response is empty")
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("ACT - anthropic response is not text")
+            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+            self.logger.info(f"Received Actor response {response_str}")
             llm_response = LLMActResponse.model_validate(
-                ast.literal_eval(outcome.text or "")
-            )
-            self.logger.info(
-                f"Received Actor response {llm_response.model_dump_json(indent=4)}"
+                ast.literal_eval(response_str or "")
             )
             return llm_response
 
@@ -189,14 +208,20 @@ class AnthropicLLMClient(LLMClient):
     async def assert_(self, conversation: list[Message]) -> LLMAssertResponse:
         """Assertor call"""
         try:
-            self.logger.info(f"Assertor User Message:\n{conversation[-1].content}")
+            self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
                 LLMAssertResponse
             )
+            conversation[-1].content += expected_format
+            preshot_assistant = Message(
+                role=MessageRole.Assistant,
+                content='{"',
+            )
+            conversation.append(preshot_assistant)
             response = await self.aclient.messages.create(
                 max_tokens=1000,
-                model="gpt-4o-mini",
-                messages=self.to_anthropic_messages(conversation, expected_format),
+                model="claude-3-5-sonnet-latest",
+                messages=self.to_anthropic_messages(conversation),
                 # response_format=LLMAssertResponse,
             )
             if len(response.content) == 0:
@@ -204,8 +229,10 @@ class AnthropicLLMClient(LLMClient):
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("ASSERT - anthropic response is not text")
+            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+            self.logger.info(f"Received Assertor response {response_str}")
             llm_response = LLMAssertResponse.model_validate(
-                ast.literal_eval(outcome.text or "")
+                ast.literal_eval(response_str or "")
             )
             self.logger.info(
                 f"Received Assertor response {llm_response.model_dump_json(indent=4)}"
@@ -233,18 +260,25 @@ class AnthropicLLMClient(LLMClient):
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
                 LLMDataExtractionResponse
             )
+            conversation[-1].content += expected_format
+            preshot_assistant = Message(
+                role=MessageRole.Assistant,
+                content='{"',
+            )
+            conversation.append(preshot_assistant)
             response = await self.aclient.messages.create(
                 max_tokens=1024,
                 model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation, expected_format),
+                messages=self.to_anthropic_messages(conversation),
             )
             if len(response.content) == 0:
                 raise ValueError("SYNTHESIS - anthropic response is empty")
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("SYNTHESIS - anthropic response is not text")
+            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
             llm_response = LLMDataExtractionResponse.model_validate(
-                ast.literal_eval(outcome.text or "")
+                ast.literal_eval(response_str or "")
             )
 
             self.logger.info(
@@ -257,12 +291,9 @@ class AnthropicLLMClient(LLMClient):
             raise
 
     @staticmethod
-    def to_anthropic_messages(
-        conversation: list[Message], prompt_json_format: str
-    ) -> Iterable[MessageParam]:
+    def to_anthropic_messages(conversation: list[Message]) -> Iterable[MessageParam]:
         messages: Iterable[MessageParam] = []
-        conv_length = len(conversation)
-        for idx, msg in enumerate(conversation):
+        for msg in conversation:
             match msg.role:
                 case MessageRole.System:
                     continue
@@ -270,10 +301,7 @@ class AnthropicLLMClient(LLMClient):
                     messages.append(MessageParam(role="assistant", content=msg.content))
                 case MessageRole.User:
                     content: Iterable[TextBlockParam | ImageBlockParam] = []
-                    format_suffix = prompt_json_format if idx == conv_length - 1 else ""
-                    content.append(
-                        TextBlockParam(type="text", text=msg.content + format_suffix)
-                    )
+                    content.append(TextBlockParam(type="text", text=msg.content))
                     if msg.screenshot:
                         for screenshot in msg.screenshot:
                             base64_screenshot = str(
@@ -296,36 +324,12 @@ class AnthropicLLMClient(LLMClient):
         schema = model.model_json_schema()
 
         prompt = (
-            "Your response must be a json.loads parsable JSON object, following this JSON schema:\n\n"
-            f"```json\n{json.dumps(schema, indent=2)}\n```"
+            "\nYour response must be a json.loads parsable JSON object, following this Pydantic JSON schema:\n"
+            f"{json.dumps(schema, indent=2)}"
+            "\n please omit properties that have a default null if you don't plan on valuing them"
         )
 
         return prompt
-
-    @staticmethod
-    def build_json_start(model: type[BaseModel], indent: int = 0) -> str:
-        """
-        Recursively builds a JSON string up to the first unknown value.
-        """
-        properties: dict = model.model_json_schema()["properties"]
-        json_parts = ["{"]
-        first = True
-        for key, value in properties.items():
-            if not first:
-                json_parts.append(",")
-            first = False
-            json_parts.append("\n" + " " * (indent + 2) + f'"{key}": ')
-
-            if value["type"] == "object":
-                json_parts.append(
-                    AnthropicLLMClient.build_json_start(value["properties"], indent + 2)
-                )
-            else:
-                json_parts.append("")
-                break
-
-        json_parts.append("\n" + " " * indent + "}")
-        return "".join(json_parts)
 
     @staticmethod
     def extract_json(response: str) -> str:

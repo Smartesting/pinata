@@ -21,7 +21,9 @@ async def test_one_TC():
             "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
         )
         test_case = test_collection.get_test_case_by_id("1")
-        orchestrator = Orchestrator(browser=browser, llm_provider=LLMProviders.OPENAI)
+        orchestrator = Orchestrator(
+            browser=browser, llm_provider=LLMProviders.ANTHROPIC
+        )
         orchestrator.logger.setLevel(logging.DEBUG)
 
         _ = await orchestrator.process_testcase(test_case)
