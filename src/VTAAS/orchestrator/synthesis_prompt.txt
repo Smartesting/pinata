@@ -15,42 +15,39 @@ A group of actors and assertor workers have been attempting to perform the curre
 {execution_logs}
 </execution_logs>
 
-The following data has already been saved from previous steps:
-<saved_data>
+The following synthesis has already been done on previous steps:
+<current_synthesis>
 {saved_data}
-</saved_data>
+</current_synthesis>
 :
-Your task is to carefully analyze the execution logs and extract any relevant information that could be useful for the orchestrator in subsequent test steps:
-1. Input data used to fill forms
-2. Previous content of form / dialog elements (if needed later on)
-3. Solutions for any navigation difficulty the workers previously encountered but eventually solved
-4. Planning tips if the same action needs to be done twice in the test case
-5. Any other data that could be relevant for future test steps
+Your task is to carefully analyze the execution logs and extract meaningful data that is of importance to complete the subsequent test steps. You must keep in mind that workers and planners for subsequent steps need your data extraction to perform their task. Your role is of the utmost importance. 
+
+Extract any relevant information, either in the logs or the screenshots, that could be useful for the orchestrator and workers to execute subsequent test steps, such as:
+1. Input data used to fill forms that are not explicited in the definition of the test case
+2. Previous content of form / dialog elements (only if needed later on)
+3. Particular business items involved in actions, for instance putting something in the cart, only if the items were not already explicited in the test case
+4. Any other data that cannot be infered from the test case but may be of use for later steps
 
 For each piece of relevant information you find, create an entry in the following format:
 <relevant_data>
-<type>Type of information (e.g., test_data, previous_content, planning_tip, navigation_tip)</type>
-<description>Brief description of the information</description>
+<type>Type of information (e.g., test_data, previous_content, business_item)</type>
 <value>The actual value or content found</value>
 </relevant_data>
 
 <example>
 <relevant_data>
 <type>test_data</type>
-<description>city used in registration form</description>
-<value>Cincinnati, OH</value>
+<value>Actor chose Cincinnati, OH as city</value>
 </relevant_data>
 
 <relevant_data>
-<type>navigation_tip</type>
-<description>accessing the handtool category</description>
-<value>The worker should first hover the tool menu at the top then click the handtool submenu</value>
+<type>business_item</type>
+<value>A pair of Nike running shoes were put in the cart</value>
 </relevant_data>
 
 <relevant_data>
 <type>previous_data</type>
-<description>The initial value of the user's profile Age must be saved as it is asked to restore the initial value in a subsequent step</description>
-<value>25</value>
+<value>The initial value of the user's profile 'age' was '25'</value>
 </relevant_data>
 </example>
 

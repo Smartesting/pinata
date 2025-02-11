@@ -46,14 +46,13 @@ class LLMTestStepFollowUpResponse(BaseModel):
     sequence_type: SequenceType
 
 
-class SynthesisEntry(BaseModel):
+class DataExtractionEntry(BaseModel):
     entry_type: str
-    description: str
     value: str
 
 
-class LLMSynthesisResponse(BaseModel):
-    entries: list[SynthesisEntry]
+class LLMDataExtractionResponse(BaseModel):
+    entries: list[DataExtractionEntry]
 
 
 class LLMTestSequencePart(BaseModel):

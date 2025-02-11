@@ -22,7 +22,7 @@ from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
-    LLMSynthesisResponse,
+    LLMDataExtractionResponse,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
@@ -175,9 +175,9 @@ class OpenAILLMClient(LLMClient):
             raise
 
     @override
-    async def step_synthesis(
+    async def step_postprocess(
         self, system: str, user: str, screenshots: list[bytes]
-    ) -> LLMSynthesisResponse:
+    ) -> LLMDataExtractionResponse:
         """Synthesis call"""
         try:
             conversation: list[Message] = [
@@ -191,12 +191,12 @@ class OpenAILLMClient(LLMClient):
             response = await self.aclient.beta.chat.completions.parse(
                 model="gpt-4o-2024-11-20",
                 messages=self._to_openai_messages(conversation),
-                response_format=LLMSynthesisResponse,
+                response_format=LLMDataExtractionResponse,
             )
             resp_msg = response.choices[0].message.content
             if not resp_msg:
                 raise Exception("Synthesis response is empty")
-            llm_response = LLMSynthesisResponse.model_validate(
+            llm_response = LLMDataExtractionResponse.model_validate(
                 ast.literal_eval(response.choices[0].message.content or "")
             )
 

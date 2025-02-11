@@ -5,7 +5,7 @@ from ..schemas.worker import Message
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
-    LLMSynthesisResponse,
+    LLMDataExtractionResponse,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
@@ -29,9 +29,9 @@ class LLMClient(Protocol):
 
     async def assert_(self, conversation: list[Message]) -> LLMAssertResponse: ...
 
-    async def step_synthesis(
+    async def step_postprocess(
         self, system: str, user: str, screenshots: list[bytes]
-    ) -> LLMSynthesisResponse: ...
+    ) -> LLMDataExtractionResponse: ...
 
 
 class LLMProviders(str, Enum):

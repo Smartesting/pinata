@@ -10,7 +10,7 @@ from ..schemas.llm import (
     LLMActResponse,
     LLMActResponseGoogle,
     LLMAssertResponse,
-    LLMSynthesisResponse,
+    LLMDataExtractionResponse,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
@@ -177,9 +177,9 @@ class GoogleLLMClient(LLMClient):
             raise
 
     @override
-    async def step_synthesis(
+    async def step_postprocess(
         self, system: str, user: str, screenshots: list[bytes]
-    ) -> LLMSynthesisResponse:
+    ) -> LLMDataExtractionResponse:
         """Synthesis call"""
         try:
             conversation: list[Message] = [
@@ -195,13 +195,13 @@ class GoogleLLMClient(LLMClient):
                 contents=self._to_google_messages(conversation),
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=LLMSynthesisResponse,
+                    response_schema=LLMDataExtractionResponse,
                 ),
             )
             resp_msg = response.text
             if not resp_msg:
                 raise Exception("Synthesis response is empty")
-            llm_response = LLMSynthesisResponse.model_validate(
+            llm_response = LLMDataExtractionResponse.model_validate(
                 ast.literal_eval(response.text or "")
             )
 

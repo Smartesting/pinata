@@ -81,3 +81,7 @@ class Assertor(Worker):
 
     def _is_assertor_input(self, input: WorkerInput) -> TypeGuard[AssertorInput]:
         return isinstance(input, AssertorInput)
+
+    @override
+    def __str__(self) -> str:
+        return f"Assert({self.query})"

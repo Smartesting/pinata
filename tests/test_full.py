@@ -1,3 +1,4 @@
+import logging
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCaseCollection
@@ -21,6 +22,7 @@ async def test_one_TC():
         )
         test_case = test_collection.get_test_case_by_id("1")
         orchestrator = Orchestrator(browser=browser, llm_provider=LLMProviders.OPENAI)
+        orchestrator.logger.setLevel(logging.DEBUG)
 
         _ = await orchestrator.process_testcase(test_case)
     # Initialize workers based on a specific task

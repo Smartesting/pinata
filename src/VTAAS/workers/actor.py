@@ -177,3 +177,7 @@ class Actor(Worker):
         for m in marks:
             output += f"{m['mark']}. {m['element']}\n"
         return output
+
+    @override
+    def __str__(self) -> str:
+        return f"Act({self.query})"

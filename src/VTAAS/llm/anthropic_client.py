@@ -18,7 +18,7 @@ from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
-    LLMSynthesisResponse,
+    LLMDataExtractionResponse,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
@@ -217,9 +217,9 @@ class AnthropicLLMClient(LLMClient):
             raise
 
     @override
-    async def step_synthesis(
+    async def step_postprocess(
         self, system: str, user: str, screenshots: list[bytes]
-    ) -> LLMSynthesisResponse:
+    ) -> LLMDataExtractionResponse:
         """Synthesis call"""
         try:
             conversation: list[Message] = [
@@ -231,7 +231,7 @@ class AnthropicLLMClient(LLMClient):
                 ),
             ]
             expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
-                LLMSynthesisResponse
+                LLMDataExtractionResponse
             )
             response = await self.aclient.messages.create(
                 max_tokens=1024,
@@ -243,7 +243,7 @@ class AnthropicLLMClient(LLMClient):
             outcome = response.content[0]
             if not isinstance(outcome, TextBlock):
                 raise ValueError("SYNTHESIS - anthropic response is not text")
-            llm_response = LLMSynthesisResponse.model_validate(
+            llm_response = LLMDataExtractionResponse.model_validate(
                 ast.literal_eval(outcome.text or "")
             )
 

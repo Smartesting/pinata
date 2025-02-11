@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import TypedDict, Unpack
 from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.llm.utils import create_llm_client
-from VTAAS.schemas.llm import SynthesisEntry, SequenceType
+from VTAAS.schemas.llm import DataExtractionEntry, SequenceType
 from ..data.testcase import TestCase
 from ..schemas.verdict import (
     ActorResult,
@@ -107,7 +107,7 @@ class Orchestrator:
             step_str = (
                 f"\n\n{exec_context.step_index}. {test_step[0]} -> {test_step[1]}\n"
             )
-            step_synthesis = await self.step_synthesis(
+            step_synthesis = await self.step_postprocess(
                 exec_context, verdict.history, exec_context.synthesis
             )
             exec_context.synthesis.append(step_str)
@@ -136,7 +136,7 @@ class Orchestrator:
         )
         for i in range(max_tries):
             self.logger.info(
-                f"step #{exec_context.step_index}: processing iteration {i}"
+                f"step #{exec_context.step_index}: processing iteration {i + 1}"
             )
             results = await self.execute_step(exec_context)
             success = not any(verdict.status != Status.PASS for verdict in results)
@@ -248,37 +248,42 @@ class Orchestrator:
             )
             result = await worker.process(input=input)
             if isinstance(result, ActorResult):
+                local_history.append(worker.__str__())
                 for action in result.actions:
                     if action:
                         local_history.append(action.action)
+            elif result.status == Status.PASS:
+                local_history.append(f"{worker.__str__()}: Assertion Verified")
             else:
-                local_history.append(f'Verified: "{result.query}"')
+                local_history.append(
+                    f"{worker.__str__()}: Assertion could not be verified"
+                )
             results.append(result)
             worker.status = WorkerStatus.RETIRED
             self.active_workers.remove(worker)
         self.active_workers.clear()
         return results
 
-    async def step_synthesis(
+    async def step_postprocess(
         self,
         exec_context: TestExecutionContext,
         step_history: list[str | tuple[str, list[bytes]]],
         existing_synthesis: list[str],
-    ) -> list[SynthesisEntry]:
-        """Test step execution synthesis: keeping relevant info for future steps"""
+    ) -> list[DataExtractionEntry]:
+        """Test step execution post-processing: keeping relevant info for future steps"""
         screenshots = [
             sshot
             for entry in step_history
             if isinstance(entry, tuple)
             for sshot in entry[1]
         ]
-        system = "You are an expert in meaningful textual data extraction"
+        system = "You are an expert in meaningful data extraction"
         synthesis = "\n".join(existing_synthesis)
         raw_step_history = "\n-----\n".join(
             [entry if isinstance(entry, str) else entry[0] for entry in step_history]
         )
         user = self._build_synthesis_prompt(exec_context, synthesis, raw_step_history)
-        response = await self.llm_client.step_synthesis(system, user, screenshots)
+        response = await self.llm_client.step_postprocess(system, user, screenshots)
         return response.entries
 
     def _merge_worker_results(
@@ -305,6 +310,25 @@ class Orchestrator:
                     "-----------------\n"
                 )
         return merged_results, screenshots
+
+    def step_sharp_synthesis(self, success: bool, results: list[WorkerResult]):
+        outcome: str = "successfully" if success else "but eventually failed"
+        merged_results: str = f"The sequence of workers was executed {outcome}:\n"
+        for result in results:
+            if isinstance(result, ActorResult):
+                actions_str = "\n".join(
+                    [f"  - {action.action}" for action in result.actions]
+                )
+                merged_results += (
+                    f'Act("{result.query}") -> {result.status.value}\n'
+                    f"  Actions:\n{actions_str}\n"
+                    "-----------------\n"
+                )
+            else:
+                merged_results += (
+                    f'Assert("{result.query}") -> {result.status.value}\n'
+                    "-----------------\n"
+                )
 
     def _prepare_worker_input(
         self,
@@ -399,12 +423,11 @@ class Orchestrator:
         )
 
     @staticmethod
-    def synthesis_str(synthesis: list[SynthesisEntry]):
+    def synthesis_str(synthesis: list[DataExtractionEntry]):
         output: str = ""
         for entry in synthesis:
             output += " ----- \n"
             output += f"type: {entry.entry_type}\n"
-            output += f"description: {entry.description}\n"
             output += f"value: {entry.value}\n"
         return output
 
