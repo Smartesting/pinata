@@ -60,6 +60,9 @@ class OpenAILLMClient(LLMClient):
                 response = await self.aclient.beta.chat.completions.parse(
                     model="gpt-4o-2024-11-20",
                     messages=self._to_openai_messages(conversation),
+                    temperature=0,
+                    seed=192837465,
+                    frequency_penalty=0.7,
                     response_format=LLMTestStepPlanResponse,
                 )
             except Exception as e:
@@ -99,6 +102,9 @@ class OpenAILLMClient(LLMClient):
                 response = await self.aclient.beta.chat.completions.parse(
                     model="gpt-4o-2024-11-20",
                     messages=self._to_openai_messages(conversation),
+                    temperature=0,
+                    seed=192837465,
+                    frequency_penalty=0.7,
                     response_format=LLMTestStepFollowUpResponse,
                 )
             except Exception as e:
@@ -138,6 +144,9 @@ class OpenAILLMClient(LLMClient):
                 response = await self.aclient.beta.chat.completions.parse(
                     model="gpt-4o-2024-11-20",
                     messages=self._to_openai_messages(conversation),
+                    temperature=0,
+                    seed=192837465,
+                    frequency_penalty=0.7,
                     response_format=LLMTestStepRecoverResponse,
                 )
             except Exception as e:
@@ -177,6 +186,9 @@ class OpenAILLMClient(LLMClient):
                 response = await self.aclient.beta.chat.completions.parse(
                     model="gpt-4o-2024-11-20",
                     messages=self._to_openai_messages(conversation),
+                    temperature=0,
+                    seed=192837465,
+                    frequency_penalty=0.7,
                     response_format=LLMActResponse,
                 )
             except Exception as e:
@@ -214,6 +226,9 @@ class OpenAILLMClient(LLMClient):
                 response = await self.aclient.beta.chat.completions.parse(
                     model="gpt-4o-2024-11-20",
                     messages=self._to_openai_messages(conversation),
+                    temperature=0,
+                    seed=192837465,
+                    frequency_penalty=0.7,
                     response_format=LLMAssertResponse,
                 )
             except Exception as e:
@@ -260,6 +275,9 @@ class OpenAILLMClient(LLMClient):
                 response = await self.aclient.beta.chat.completions.parse(
                     model="gpt-4o-2024-11-20",
                     messages=self._to_openai_messages(conversation),
+                    temperature=0,
+                    seed=192837465,
+                    frequency_penalty=0.7,
                     response_format=LLMDataExtractionResponse,
                 )
             except Exception as e:

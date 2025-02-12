@@ -78,72 +78,36 @@ class LLMTestStepRecoverResponse(BaseModel):
 
 
 class ClickCommand(BaseModel):
-    name: str = "click"
+    name: Literal["click"]
     label: int
-
-    @field_validator("name")
-    def check_name(cls, value: str) -> str:
-        if value != "click":
-            raise ValueError("Invalid name for ClickCommand, expected 'click'")
-        return value
 
 
 class GotoCommand(BaseModel):
-    name: str = "goto"
+    name: Literal["goto"]
     url: str
-
-    @field_validator("name")
-    def check_name(cls, value: str) -> str:
-        if value != "goto":
-            raise ValueError("Invalid name for GotoCommand, expected 'goto'")
-        return value
 
 
 class FillCommand(BaseModel):
-    name: str = "fill"
+    name: Literal["fill"]
     label: int
     value: str
 
-    @field_validator("name")
-    def check_name(cls, value: str) -> str:
-        if value != "fill":
-            raise ValueError("Invalid name for FillCommand, expected 'fill'")
-        return value
-
 
 class SelectCommand(BaseModel):
-    name: str = "select"
+    name: Literal["select"]
     label: int
     options: str
 
-    @field_validator("name")
-    def check_name(cls, value: str) -> str:
-        if value != "select":
-            raise ValueError("Invalid name for SelectCommand, expected 'select'")
-        return value
-
 
 class ScrollCommand(BaseModel):
-    name: str = "scroll"
+    name: Literal["scroll"]
     direction: Literal["up", "down"]
-
-    @field_validator("name")
-    def check_name(cls, value: str) -> str:
-        if value != "scroll":
-            raise ValueError("Invalid name for ScrollCommand, expected 'scroll'")
-        return value
 
 
 class FinishCommand(BaseModel):
-    name: str = "finish"
+    name: Literal["finish"]
     status: Status
     reason: str = None
-
-    @field_validator("name")
-    def check_name(cls, value: str) -> str:
-        if value != "finish":
-            raise ValueError("Invalid name for FinishCommand, expected 'finish'")
-        return value
 
 
 Command = (
@@ -164,6 +128,99 @@ class LLMActResponse(BaseModel):
     query_progress: str
     next_action: str
     command: Command
+
+    def get_cot(self) -> str:
+        data = self.model_dump_json(exclude={"command"})
+        return str(data)
+
+
+class ClickGoogleCommand(BaseModel):
+    name: str = "click"
+    label: int
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "click":
+            raise ValueError("Invalid name for ClickCommand, expected 'click'")
+        return value
+
+
+class GotoGoogleCommand(BaseModel):
+    name: str = "goto"
+    url: str
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "goto":
+            raise ValueError("Invalid name for GotoCommand, expected 'goto'")
+        return value
+
+
+class FillGoogleCommand(BaseModel):
+    name: str = "fill"
+    label: int
+    value: str
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "fill":
+            raise ValueError("Invalid name for FillCommand, expected 'fill'")
+        return value
+
+
+class SelectGoogleCommand(BaseModel):
+    name: str = "select"
+    label: int
+    options: str
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "select":
+            raise ValueError("Invalid name for SelectCommand, expected 'select'")
+        return value
+
+
+class ScrollGoogleCommand(BaseModel):
+    name: str = "scroll"
+    direction: Literal["up", "down"]
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "scroll":
+            raise ValueError("Invalid name for ScrollCommand, expected 'scroll'")
+        return value
+
+
+class FinishGoogleCommand(BaseModel):
+    name: str = "finish"
+    status: Status
+    reason: str = None
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "finish":
+            raise ValueError("Invalid name for FinishCommand, expected 'finish'")
+        return value
+
+
+GoogleCommand = (
+    ClickGoogleCommand
+    | GotoGoogleCommand
+    | FillGoogleCommand
+    | SelectGoogleCommand
+    | ScrollGoogleCommand
+    | FinishGoogleCommand
+)
+
+
+class LLMActGoogleResponse(BaseModel):
+    """Schema for the response received from LLM."""
+
+    current_webpage_identification: str
+    screenshot_analysis: str
+    query_progress: str
+    next_action: str
+    command: GoogleCommand
 
     def get_cot(self) -> str:
         data = self.model_dump_json(exclude={"command"})

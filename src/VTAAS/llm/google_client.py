@@ -8,6 +8,7 @@ from VTAAS.llm.llm_client import LLMClient
 
 from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
+    LLMActGoogleResponse,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
@@ -45,6 +46,8 @@ class GoogleLLMClient(LLMClient):
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=LLMTestStepPlanResponse,
+                        temperature=0,
+                        seed=192837465,
                     ),
                 )
             except Exception as e:
@@ -91,6 +94,8 @@ class GoogleLLMClient(LLMClient):
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=LLMTestStepFollowUpResponse,
+                        temperature=0,
+                        seed=192837465,
                     ),
                 )
             except Exception as e:
@@ -136,6 +141,8 @@ class GoogleLLMClient(LLMClient):
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=LLMTestStepRecoverResponse,
+                        temperature=0,
+                        seed=192837465,
                     ),
                 )
             except Exception as e:
@@ -182,7 +189,9 @@ class GoogleLLMClient(LLMClient):
                     contents=self._to_google_messages(conversation),
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=LLMActResponse,
+                        response_schema=LLMActGoogleResponse,
+                        temperature=0,
+                        seed=192837465,
                     ),
                 )
             except Exception as e:
@@ -224,6 +233,8 @@ class GoogleLLMClient(LLMClient):
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=LLMAssertResponse,
+                        temperature=0,
+                        seed=192837465,
                     ),
                 )
             except Exception as e:
@@ -273,6 +284,8 @@ class GoogleLLMClient(LLMClient):
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=LLMDataExtractionResponse,
+                        temperature=0,
+                        seed=192837465,
                     ),
                 )
             except Exception as e:

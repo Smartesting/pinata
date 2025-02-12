@@ -64,6 +64,7 @@ class AnthropicLLMClient(LLMClient):
                 response = await self.aclient.messages.create(
                     max_tokens=1000,
                     model="claude-3-5-sonnet-latest",
+                    temperature=0,
                     messages=AnthropicLLMClient.to_anthropic_messages(conversation),
                 )
             except Exception as e:
@@ -117,6 +118,7 @@ class AnthropicLLMClient(LLMClient):
                     max_tokens=1000,
                     model="claude-3-5-sonnet-latest",
                     messages=self.to_anthropic_messages(conversation),
+                    temperature=0,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in plan followup call: {str(e)}")
@@ -171,6 +173,7 @@ class AnthropicLLMClient(LLMClient):
                     max_tokens=1000,
                     model="claude-3-5-sonnet-latest",
                     messages=self.to_anthropic_messages(conversation),
+                    temperature=0,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in plan recover call: {str(e)}")
@@ -230,6 +233,7 @@ class AnthropicLLMClient(LLMClient):
                     max_tokens=1000,
                     model="claude-3-5-sonnet-latest",
                     messages=self.to_anthropic_messages(conversation),
+                    temperature=0,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in act call: {str(e)}")
@@ -278,7 +282,7 @@ class AnthropicLLMClient(LLMClient):
                     max_tokens=1000,
                     model="claude-3-5-sonnet-latest",
                     messages=self.to_anthropic_messages(conversation),
-                    # response_format=LLMAssertResponse,
+                    temperature=0,
                 )
 
             except Exception as e:
@@ -340,6 +344,7 @@ class AnthropicLLMClient(LLMClient):
                     max_tokens=1024,
                     model="claude-3-5-sonnet-latest",
                     messages=self.to_anthropic_messages(conversation),
+                    temperature=0,
                 )
             except Exception as e:
                 self.logger.error(
