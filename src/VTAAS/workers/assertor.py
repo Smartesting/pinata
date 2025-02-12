@@ -5,7 +5,7 @@ from VTAAS.llm.utils import create_llm_client
 from VTAAS.utils.banner import add_banner
 from VTAAS.utils.logger import get_logger
 
-from ..schemas.verdict import AssertorResult
+from ..schemas.verdict import AssertorResult, Status
 from ..workers.browser import Browser
 from ..schemas.worker import (
     AssertorInput,
@@ -42,7 +42,15 @@ class Assertor(Worker):
         screenshot = await self.browser.screenshot()
         self._setup_conversation(input, screenshot)
         self.logger.info(f"\n\nprocessing query '{self.query}'")
-        response = await self.llm_client.assert_(self.conversation)
+        try:
+            response = await self.llm_client.assert_(self.conversation)
+        except Exception as e:
+            return AssertorResult(
+                query=self.query,
+                status=Status.UNK,
+                synthesis=str(e),
+                screenshot=add_banner(screenshot, f'assert("{self.query}"'),
+            )
         return AssertorResult(
             query=self.query,
             status=response.verdict.status,

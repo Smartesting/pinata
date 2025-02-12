@@ -1,12 +1,14 @@
-import ast
 from enum import Enum
 from typing import Literal
 
-from google.genai.types import Schema
-from pydantic import BaseModel, Field
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+)
 
 
-from ..schemas.verdict import AssertionVerdict, Status, WorkerResult
+from ..schemas.verdict import AssertionVerdict, Status
 from .worker import (
     AssertionChecking,
     WorkerConfig,
@@ -76,36 +78,72 @@ class LLMTestStepRecoverResponse(BaseModel):
 
 
 class ClickCommand(BaseModel):
-    name: Literal["click"]
+    name: str = "click"
     label: int
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "click":
+            raise ValueError("Invalid name for ClickCommand, expected 'click'")
+        return value
 
 
 class GotoCommand(BaseModel):
-    name: Literal["goto"]
+    name: str = "goto"
     url: str
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "goto":
+            raise ValueError("Invalid name for GotoCommand, expected 'goto'")
+        return value
 
 
 class FillCommand(BaseModel):
-    name: Literal["fill"]
+    name: str = "fill"
     label: int
     value: str
 
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "fill":
+            raise ValueError("Invalid name for FillCommand, expected 'fill'")
+        return value
+
 
 class SelectCommand(BaseModel):
-    name: Literal["select"]
+    name: str = "select"
     label: int
     options: str
 
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "select":
+            raise ValueError("Invalid name for SelectCommand, expected 'select'")
+        return value
+
 
 class ScrollCommand(BaseModel):
-    name: Literal["scroll"]
+    name: str = "scroll"
     direction: Literal["up", "down"]
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "scroll":
+            raise ValueError("Invalid name for ScrollCommand, expected 'scroll'")
+        return value
 
 
 class FinishCommand(BaseModel):
-    name: Literal["finish"]
+    name: str = "finish"
     status: Status
     reason: str = None
+
+    @field_validator("name")
+    def check_name(cls, value: str) -> str:
+        if value != "finish":
+            raise ValueError("Invalid name for FinishCommand, expected 'finish'")
+        return value
 
 
 Command = (
@@ -132,36 +170,6 @@ class LLMActResponse(BaseModel):
         return str(data)
 
 
-class CommandType(str, Enum):
-    click = "click"
-    goto = "goto"
-    fill = "fill"
-    select = "select"
-    scroll = "scroll"
-    finish = "finish"
-
-
-class GoogleCommand(BaseModel):
-    name: CommandType
-    args: list[list[str]] = Field(..., description="the command args")
-
-
-class LLMActResponseGoogle(BaseModel):
-    """Schema for the response received from LLM."""
-
-    current_webpage_identification: str
-    screenshot_analysis: str
-    query_progress: str
-    next_action: str
-    # command: GoogleCommand = Field(..., description="Command to perform on the web app")
-    click: ClickCommand | None = None
-    goto: GotoCommand | None = None
-    fill: FillCommand | None = None
-    select: SelectCommand | None = None
-    scroll: ScrollCommand | None = None
-    finish: FinishCommand | None = None
-
-
 class LLMAssertResponse(BaseModel):
     """Schema for the response received from LLM."""
 
@@ -172,40 +180,3 @@ class LLMAssertResponse(BaseModel):
     def get_cot(self) -> str:
         data = self.model_dump_json()
         return str(data)
-
-
-def to_llm_act_response(response: LLMActResponseGoogle) -> LLMActResponse:
-    """Converts LLMActResponseGoogle to LLMActResponse."""
-    command: Command
-    if response.command.name == "click":
-        command = ClickCommand.model_validate(
-            ast.literal_eval(response.command.model_dump_json())
-        )
-    elif response.command.name == "goto":
-        command = GotoCommand.model_validate(
-            ast.literal_eval(response.command.model_dump_json())
-        )
-    elif response.command.name == "fill":
-        command = FillCommand.model_validate(
-            ast.literal_eval(response.command.model_dump_json())
-        )
-        # case "goto":
-        #     command = response.goto
-        # case "fill":
-        #     command = response.fill
-        # case "select":
-        #     command = response.select
-        # case "scroll":
-        #     command = response.scroll
-        # case "finish":
-        #     command = response.finish
-    else:
-        raise ValueError("No command found in LLMActResponseGoogle")
-
-    return LLMActResponse(
-        current_webpage_identification=response.current_webpage_identification,
-        screenshot_analysis=response.screenshot_analysis,
-        query_progress=response.query_progress,
-        next_action=response.next_action,
-        command=command,
-    )

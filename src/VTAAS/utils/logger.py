@@ -10,7 +10,7 @@ class ElapsedTimeFormatter(logging.Formatter):
     def __init__(
         self,
         start_time: float,
-        fmt: str = "%(elapsed_time)s - %(name)s - %(levelname)s - %(message)s",
+        fmt: str = "\n%(elapsed_time)s - %(name)s - %(levelname)s - %(message)s",
     ):
         super().__init__(fmt)
         self.start_time = start_time

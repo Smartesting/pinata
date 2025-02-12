@@ -39,7 +39,7 @@ class Actor(Worker):
         browser: Browser,
         llm_provider: LLMProviders,
         start_time: float,
-        max_rounds: int = 4,
+        max_rounds: int = 8,
     ):
         super().__init__(query, browser)
         self.type = WorkerType.ACTOR
@@ -66,7 +66,17 @@ class Actor(Worker):
         self.logger.info(f"Actor {self.id[:8]} processing query '{self.query}'")
         while verdict is None and round < self.max_rounds:
             round += 1
+            # try:
             response = await self.llm_client.act(self.conversation)
+            # except Exception as e:
+            #     self.actions.append(ActorAction(action=str(e), chain_of_thought=str(e)))
+            #     return ActorResult(
+            #         query=self.query,
+            #         status=Status.UNK,
+            #         actions=self.actions,
+            #         screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
+            #         explaination=str(e),
+            #     )
             command = response.command
             if command.name == "finish":
                 self.logger.info(
@@ -79,7 +89,7 @@ class Actor(Worker):
                     screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
                     explaination=command.reason,
                 )
-                continue
+                break
             self.conversation.append(
                 Message(
                     role=MessageRole.Assistant,
@@ -101,6 +111,8 @@ class Actor(Worker):
             self.conversation.append(
                 Message(role=MessageRole.User, content=outcome, screenshot=[screenshot])
             )
+
+        await self.browser.unmark_page()
         return verdict or ActorResult(
             query=self.query,
             status=Status.UNK,

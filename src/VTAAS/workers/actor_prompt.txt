@@ -36,6 +36,5 @@ If you believe you accomplished the task that were assigned to you, use the 'fin
 If you cannot complete the task or if there's an issue, use the 'finish' command with a 'fail' status and provide a reason.
 
 Remember:
-  - Do not try to complete the entire test case, your sole focus should be your assigned task
   - If the label you chose led to unexpected behavior, consider the possibility that you misread the label
-  - If you don't see the element you are asked to interact with, try scrolling
+  - If you don't see the element you are asked to interact with, try scrolling down, especially since your viewpoint is pretty small.

@@ -38,7 +38,7 @@ class AnthropicLLMClient(LLMClient):
         load_config()
         self.start_time = start_time
         self.logger = get_logger(__name__, self.start_time)
-        # self.logger.setLevel(logging.DEBUG)
+        self.max_tries = 3
         try:
             self.aclient = AsyncAnthropic(max_retries=4)
         except Exception as e:
@@ -48,207 +48,276 @@ class AnthropicLLMClient(LLMClient):
     @override
     async def plan_step(self, conversation: list[Message]) -> LLMTestStepPlanResponse:
         """Get list of act/assert workers from LLM."""
-        try:
-            self.logger.debug(f"Init Plan Step Message:\n{conversation[-1].content}")
-            expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
-                LLMTestStepPlanResponse
-            )
-            conversation[-1].content += expected_format
-            preshot_assistant = Message(
-                role=MessageRole.Assistant,
-                content='{"',
-            )
-            conversation.append(preshot_assistant)
-            response = await self.aclient.messages.create(
-                max_tokens=1000,
-                model="claude-3-5-sonnet-latest",
-                messages=AnthropicLLMClient.to_anthropic_messages(conversation),
-            )
-            if len(response.content) == 0:
-                raise ValueError("PLAN - anthropic response is empty")
-            outcome = response.content[0]
-            if not isinstance(outcome, TextBlock):
-                raise ValueError("PLAN - anthropic response is not text")
-            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
-            llm_response = LLMTestStepPlanResponse.model_validate(
-                ast.literal_eval(response_str)
-            )
-            self.logger.info(
-                f"Orchestrator Plan response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            return llm_response
+        attempts = 1
+        self.logger.debug(f"Init Plan Step Message:\n{conversation[-1].content}")
+        expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
+            LLMTestStepPlanResponse
+        )
+        conversation[-1].content += expected_format
+        preshot_assistant = Message(
+            role=MessageRole.Assistant,
+            content='{"',
+        )
+        conversation.append(preshot_assistant)
+        while attempts <= self.max_tries:
+            try:
+                response = await self.aclient.messages.create(
+                    max_tokens=1000,
+                    model="claude-3-5-sonnet-latest",
+                    messages=AnthropicLLMClient.to_anthropic_messages(conversation),
+                )
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in plan step call: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+            try:
+                if len(response.content) == 0:
+                    raise ValueError("PLAN - anthropic response is empty")
+                outcome = response.content[0]
+                if not isinstance(outcome, TextBlock):
+                    raise ValueError("PLAN - anthropic response is not text")
+                response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+                llm_response = LLMTestStepPlanResponse.model_validate(
+                    ast.literal_eval(response_str)
+                )
+                self.logger.info(
+                    f"Orchestrator Plan response:\n{llm_response.model_dump_json(indent=4)}"
+                )
+                return llm_response
 
-        except Exception as e:
-            self.logger.error(f"Error getting worker configurations: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in plan step parsing: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+        raise Exception("could not send Step planning request")
 
     @override
     async def followup_step(
         self, conversation: list[Message]
     ) -> LLMTestStepFollowUpResponse:
         """Update list of act/assert workers from LLM."""
-        try:
-            self.logger.debug(
-                f"FollowUp Plan Step Message:\n{conversation[-1].content}"
-            )
-            expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
-                LLMTestStepFollowUpResponse
-            )
-            conversation[-1].content += expected_format
-            preshot_assistant = Message(
-                role=MessageRole.Assistant,
-                content='{"',
-            )
-            conversation.append(preshot_assistant)
-            response = await self.aclient.messages.create(
-                max_tokens=1000,
-                model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation),
-            )
-            if len(response.content) == 0:
-                raise ValueError("FOLLOWUP - anthropic response is empty")
-            outcome = response.content[0]
-            if not isinstance(outcome, TextBlock):
-                raise ValueError("FOLLOWUP - anthropic response is not text")
-            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
-            llm_response = LLMTestStepFollowUpResponse.model_validate(
-                ast.literal_eval(response_str or "")
-            )
-            self.logger.info(
-                f"Orchestrator Follow-Up response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            return llm_response
+        attempts = 1
+        self.logger.debug(f"FollowUp Plan Step Message:\n{conversation[-1].content}")
+        expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
+            LLMTestStepFollowUpResponse
+        )
+        conversation[-1].content += expected_format
+        preshot_assistant = Message(
+            role=MessageRole.Assistant,
+            content='{"',
+        )
+        conversation.append(preshot_assistant)
+        while attempts <= self.max_tries:
+            try:
+                response = await self.aclient.messages.create(
+                    max_tokens=1000,
+                    model="claude-3-5-sonnet-latest",
+                    messages=self.to_anthropic_messages(conversation),
+                )
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in plan followup call: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+            try:
+                if len(response.content) == 0:
+                    raise ValueError("FOLLOWUP - anthropic response is empty")
+                outcome = response.content[0]
+                if not isinstance(outcome, TextBlock):
+                    raise ValueError("FOLLOWUP - anthropic response is not text")
+                response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+                llm_response = LLMTestStepFollowUpResponse.model_validate(
+                    ast.literal_eval(response_str or "")
+                )
+                self.logger.info(
+                    f"Orchestrator Follow-Up response:\n{llm_response.model_dump_json(indent=4)}"
+                )
+                return llm_response
 
-        except Exception as e:
-            self.logger.error(f"Error getting worker configurations: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(
+                    f"Error #{attempts} in plan followup parsing: {str(e)}"
+                )
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+        raise Exception("could not send step planning followup request")
 
     @override
     async def recover_step(
         self, conversation: list[Message]
     ) -> LLMTestStepRecoverResponse:
         """Update list of act/assert workers from LLM."""
-        try:
-            self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
-            expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
-                LLMTestStepRecoverResponse
-            )
-            conversation[-1].content += expected_format
-            preshot_assistant = Message(
-                role=MessageRole.Assistant,
-                content='{"',
-            )
-            conversation.append(preshot_assistant)
-            response = await self.aclient.messages.create(
-                max_tokens=1000,
-                model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation),
-            )
-            if len(response.content) == 0:
-                raise ValueError("RECOVER - anthropic response is empty")
-            outcome = response.content[0]
-            if not isinstance(outcome, TextBlock):
-                raise ValueError("RECOVER - anthropic response is not text")
-            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
-            llm_response = LLMTestStepRecoverResponse.model_validate(
-                ast.literal_eval(response_str or "")
-            )
-            self.logger.info(
-                f"Orchestrator Recover response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            if llm_response.plan:
-                self.logger.info(
-                    f"[Recover] Received {len(llm_response.plan.workers)} worker configurations from LLM"
+        attempts = 1
+        self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
+        expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
+            LLMTestStepRecoverResponse
+        )
+        conversation[-1].content += expected_format
+        preshot_assistant = Message(
+            role=MessageRole.Assistant,
+            content='{"',
+        )
+        conversation.append(preshot_assistant)
+        while attempts <= self.max_tries:
+            try:
+                response = await self.aclient.messages.create(
+                    max_tokens=1000,
+                    model="claude-3-5-sonnet-latest",
+                    messages=self.to_anthropic_messages(conversation),
                 )
-            else:
-                self.logger.info("[Recover] Test step is considered FAIL")
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in plan recover call: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+            try:
+                if len(response.content) == 0:
+                    raise ValueError("RECOVER - anthropic response is empty")
+                outcome = response.content[0]
+                if not isinstance(outcome, TextBlock):
+                    raise ValueError("RECOVER - anthropic response is not text")
+                response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+                llm_response = LLMTestStepRecoverResponse.model_validate(
+                    ast.literal_eval(response_str or "")
+                )
+                self.logger.info(
+                    f"Orchestrator Recover response:\n{llm_response.model_dump_json(indent=4)}"
+                )
+                if llm_response.plan:
+                    self.logger.info(
+                        f"[Recover] Received {len(llm_response.plan.workers)} worker configurations from LLM"
+                    )
+                else:
+                    self.logger.info("[Recover] Test step is considered FAIL")
 
-            return llm_response
+                return llm_response
 
-        except Exception as e:
-            self.logger.error(f"Error getting worker configurations: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(
+                    f"Error #{attempts} in plan recover parsing: {str(e)}"
+                )
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+        raise Exception("could not send Step planning recover request")
 
     @override
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
-        try:
-            self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
-            expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
-                LLMActResponse
-            )
-            conversation[-1].content += expected_format
-            preshot_assistant = Message(
-                role=MessageRole.Assistant,
-                content='{"',
-            )
-            conversation.append(preshot_assistant)
-            response = await self.aclient.messages.create(
-                max_tokens=1000,
-                model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation),
-            )
-            if len(response.content) == 0:
-                raise ValueError("ACT - anthropic response is empty")
-            outcome = response.content[0]
-            if not isinstance(outcome, TextBlock):
-                raise ValueError("ACT - anthropic response is not text")
-            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
-            self.logger.info(f"Received Actor response {response_str}")
-            llm_response = LLMActResponse.model_validate(
-                ast.literal_eval(response_str or "")
-            )
-            return llm_response
+        attempts = 1
+        self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
+        expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
+            LLMActResponse
+        )
+        conversation[-1].content += expected_format
+        preshot_assistant = Message(
+            role=MessageRole.Assistant,
+            content='{"',
+        )
+        conversation.append(preshot_assistant)
+        while attempts <= self.max_tries:
+            try:
+                response = await self.aclient.messages.create(
+                    max_tokens=1000,
+                    model="claude-3-5-sonnet-latest",
+                    messages=self.to_anthropic_messages(conversation),
+                )
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in act call: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+            try:
+                if len(response.content) == 0:
+                    raise ValueError("ACT - anthropic response is empty")
+                outcome = response.content[0]
+                if not isinstance(outcome, TextBlock):
+                    raise ValueError("ACT - anthropic response is not text")
+                response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+                self.logger.info(f"Received Actor response {response_str}")
+                llm_response = LLMActResponse.model_validate(
+                    ast.literal_eval(response_str or "")
+                )
+                return llm_response
 
-        except Exception as e:
-            self.logger.error(f"Error in act call: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in act parsing: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+        raise Exception("could not send Act request")
 
     @override
     async def assert_(self, conversation: list[Message]) -> LLMAssertResponse:
         """Assertor call"""
-        try:
-            self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
-            expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
-                LLMAssertResponse
-            )
-            conversation[-1].content += expected_format
-            preshot_assistant = Message(
-                role=MessageRole.Assistant,
-                content='{"',
-            )
-            conversation.append(preshot_assistant)
-            response = await self.aclient.messages.create(
-                max_tokens=1000,
-                model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation),
-                # response_format=LLMAssertResponse,
-            )
-            if len(response.content) == 0:
-                raise ValueError("ASSERT - anthropic response is empty")
-            outcome = response.content[0]
-            if not isinstance(outcome, TextBlock):
-                raise ValueError("ASSERT - anthropic response is not text")
-            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
-            self.logger.info(f"Received Assertor response {response_str}")
-            llm_response = LLMAssertResponse.model_validate(
-                ast.literal_eval(response_str or "")
-            )
-            self.logger.info(
-                f"Received Assertor response {llm_response.model_dump_json(indent=4)}"
-            )
-            return llm_response
+        attempts = 1
+        self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
+        expected_format = AnthropicLLMClient.generate_prompt_from_pydantic(
+            LLMAssertResponse
+        )
+        conversation[-1].content += expected_format
+        preshot_assistant = Message(
+            role=MessageRole.Assistant,
+            content='{"',
+        )
+        conversation.append(preshot_assistant)
+        while attempts <= self.max_tries:
+            try:
+                response = await self.aclient.messages.create(
+                    max_tokens=1000,
+                    model="claude-3-5-sonnet-latest",
+                    messages=self.to_anthropic_messages(conversation),
+                    # response_format=LLMAssertResponse,
+                )
 
-        except Exception as e:
-            self.logger.error(f"Error in assert call: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in assert call: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+            try:
+                if len(response.content) == 0:
+                    raise ValueError("ASSERT - anthropic response is empty")
+                outcome = response.content[0]
+                if not isinstance(outcome, TextBlock):
+                    raise ValueError("ASSERT - anthropic response is not text")
+                response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+                self.logger.info(f"Received Assertor response {response_str}")
+                llm_response = LLMAssertResponse.model_validate(
+                    ast.literal_eval(response_str or "")
+                )
+                self.logger.info(
+                    f"Received Assertor response {llm_response.model_dump_json(indent=4)}"
+                )
+                return llm_response
+
+            except Exception as e:
+                self.logger.error(f"Error #{attempts} in assert parsing: {str(e)}")
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+        raise Exception("could not send Assert request")
 
     @override
     async def step_postprocess(
         self, system: str, user: str, screenshots: list[bytes]
     ) -> LLMDataExtractionResponse:
-        """Synthesis call"""
-        try:
+        """Data Extraction call"""
+        attempts = 1
+        while attempts <= self.max_tries:
             conversation: list[Message] = [
                 Message(role=MessageRole.System, content=system),
                 Message(
@@ -266,29 +335,45 @@ class AnthropicLLMClient(LLMClient):
                 content='{"',
             )
             conversation.append(preshot_assistant)
-            response = await self.aclient.messages.create(
-                max_tokens=1024,
-                model="claude-3-5-sonnet-latest",
-                messages=self.to_anthropic_messages(conversation),
-            )
-            if len(response.content) == 0:
-                raise ValueError("SYNTHESIS - anthropic response is empty")
-            outcome = response.content[0]
-            if not isinstance(outcome, TextBlock):
-                raise ValueError("SYNTHESIS - anthropic response is not text")
-            response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
-            llm_response = LLMDataExtractionResponse.model_validate(
-                ast.literal_eval(response_str or "")
-            )
+            try:
+                response = await self.aclient.messages.create(
+                    max_tokens=1024,
+                    model="claude-3-5-sonnet-latest",
+                    messages=self.to_anthropic_messages(conversation),
+                )
+            except Exception as e:
+                self.logger.error(
+                    f"Error #{attempts} in data extraction call: {str(e)}"
+                )
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+            try:
+                if len(response.content) == 0:
+                    raise ValueError("Data Extraction - anthropic response is empty")
+                outcome = response.content[0]
+                if not isinstance(outcome, TextBlock):
+                    raise ValueError("Data Extraction - anthropic response is not text")
+                response_str = AnthropicLLMClient.extract_json('{"' + outcome.text)
+                llm_response = LLMDataExtractionResponse.model_validate(
+                    ast.literal_eval(response_str or "")
+                )
 
-            self.logger.info(
-                f"Received Synthesis response:\n{llm_response.model_dump_json(indent=4)}"
-            )
-            return llm_response
+                self.logger.info(
+                    f"Received Data Extraction response:\n{llm_response.model_dump_json(indent=4)}"
+                )
+                return llm_response
 
-        except Exception as e:
-            self.logger.error(f"Error in assert call: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(
+                    f"Error #{attempts} in data extraction parsing: {str(e)}"
+                )
+                if attempts >= self.max_tries:
+                    raise
+                attempts += 1
+                continue
+        raise Exception("could not send Data extraction request")
 
     @staticmethod
     def to_anthropic_messages(conversation: list[Message]) -> Iterable[MessageParam]:
