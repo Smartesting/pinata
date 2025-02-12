@@ -42,6 +42,7 @@ class TestExecutionContext:
 class OrchestratorParams(TypedDict, total=False):
     browser: Browser | None
     llm_provider: LLMProviders
+    tracer: bool
     output_folder: str
 
 
@@ -52,6 +53,7 @@ class Orchestrator:
         default_params: OrchestratorParams = {
             "browser": None,
             "llm_provider": LLMProviders.OPENAI,
+            "tracer": False,
             "output_folder": ".",
         }
         custom_params = kwargs
@@ -67,6 +69,7 @@ class Orchestrator:
         self.active_workers: list[Worker] = []
         self._browser: Browser | None = self.params["browser"]
         self.llm_provider: LLMProviders = self.params["llm_provider"]
+        self.tracer: bool = self.params["tracer"]
         self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger("Orchestrator", self.start_time)
@@ -95,7 +98,8 @@ class Orchestrator:
                 timeout=3500,
                 headless=True,
                 start_time=self.start_time,
-                trace_folder=(self.output_folder or "."),
+                tracer=self.tracer,
+                trace_folder=self.output_folder,
             )
         _ = await self.browser.goto(exec_context.test_case.url)
         verdict = BaseResult(status=Status.UNK)

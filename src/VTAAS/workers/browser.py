@@ -37,6 +37,7 @@ class BrowserParams(TypedDict, total=False):
     id: str
     save_screenshot: bool
     start_time: float
+    tracer: bool
     trace_folder: str
 
 
@@ -67,6 +68,7 @@ class Browser:
             "playwright": None,
             "save_screenshot": False,
             "start_time": time.time(),
+            "tracer": False,
             "trace_folder": ".",
         }
         custom_params = kwargs
@@ -94,7 +96,8 @@ class Browser:
         )
         self._context = await self._browser.new_context(bypass_csp=True)
         self._context.set_default_timeout(self._params["timeout"])
-        await self._context.tracing.start(screenshots=True, snapshots=True)
+        if self._params["tracer"]:
+            await self._context.tracing.start(screenshots=True, snapshots=True)
         self._page = await self._context.new_page()
 
         self._page.on("load", lambda load: self.load_js())
@@ -386,9 +389,10 @@ class Browser:
 
     async def close(self) -> None:
         """Close the browser instance"""
-        await self.context.tracing.stop(
-            path=os.path.join(self._params["trace_folder"], "trace.zip")
-        )
+        if self._params["tracer"]:
+            await self.context.tracing.stop(
+                path=os.path.join(self._params["trace_folder"], "trace.zip")
+            )
         if self.page:
             await self.page.close()
         if self._browser:
