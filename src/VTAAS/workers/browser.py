@@ -37,6 +37,7 @@ class BrowserParams(TypedDict, total=False):
     id: str
     save_screenshot: bool
     start_time: float
+    trace_folder: str
 
 
 class ScreenshotResult(TypedDict):
@@ -66,6 +67,7 @@ class Browser:
             "playwright": None,
             "save_screenshot": False,
             "start_time": time.time(),
+            "trace_folder": ".",
         }
         custom_params = kwargs
         if custom_params and set(custom_params.keys()).issubset(
@@ -92,6 +94,7 @@ class Browser:
         )
         self._context = await self._browser.new_context(bypass_csp=True)
         self._context.set_default_timeout(self._params["timeout"])
+        await self._context.tracing.start(screenshots=True, snapshots=True)
         self._page = await self._context.new_page()
 
         self._page.on("load", lambda load: self.load_js())
@@ -123,6 +126,15 @@ class Browser:
                 "Browser has not been initialized yet. Do Browser.create(name)."
             )
         return self._browser
+
+    @property
+    def context(self) -> pw.BrowserContext:
+        """Get the context instance, ensuring it is initialized"""
+        if self._context is None:
+            raise RuntimeError(
+                "Browser has not been initialized yet. Do Browser.create(name)."
+            )
+        return self._context
 
     @property
     def page(self) -> pw.Page:
@@ -374,6 +386,9 @@ class Browser:
 
     async def close(self) -> None:
         """Close the browser instance"""
+        await self.context.tracing.stop(
+            path=os.path.join(self._params["trace_folder"], "trace.zip")
+        )
         if self.page:
             await self.page.close()
         if self._browser:

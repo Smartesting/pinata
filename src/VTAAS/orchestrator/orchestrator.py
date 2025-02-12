@@ -42,6 +42,7 @@ class TestExecutionContext:
 class OrchestratorParams(TypedDict, total=False):
     browser: Browser | None
     llm_provider: LLMProviders
+    output_folder: str
 
 
 class Orchestrator:
@@ -51,6 +52,7 @@ class Orchestrator:
         default_params: OrchestratorParams = {
             "browser": None,
             "llm_provider": LLMProviders.OPENAI,
+            "output_folder": ".",
         }
         custom_params = kwargs
         if custom_params and set(custom_params.keys()).issubset(
@@ -65,6 +67,7 @@ class Orchestrator:
         self.active_workers: list[Worker] = []
         self._browser: Browser | None = self.params["browser"]
         self.llm_provider: LLMProviders = self.params["llm_provider"]
+        self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger("Orchestrator", self.start_time)
         self.logger.debug("Orchestrator initialized")
@@ -89,7 +92,10 @@ class Orchestrator:
         )
         if self._browser is None:
             self._browser = await Browser.create(
-                timeout=3500, headless=True, start_time=self.start_time
+                timeout=3500,
+                headless=True,
+                start_time=self.start_time,
+                trace_folder=(self.output_folder or "."),
             )
         _ = await self.browser.goto(exec_context.test_case.url)
         verdict = BaseResult(status=Status.UNK)
@@ -104,6 +110,7 @@ class Orchestrator:
                         f" {exec_context.current_step[0]} -> {exec_context.current_step[1]}"
                     )
                 )
+                await self.browser.close()
                 return TestCaseVerdict(
                     status=Status.FAIL, step_index=idx, explaination=None
                 )
@@ -115,6 +122,7 @@ class Orchestrator:
             if len(step_synthesis) > 0:
                 exec_context.history.append(Orchestrator.synthesis_str(step_synthesis))
 
+        await self.browser.close()
         return TestCaseVerdict(status=Status.PASS, explaination=None)
 
     async def process_step(
