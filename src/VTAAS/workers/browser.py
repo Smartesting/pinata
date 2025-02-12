@@ -83,6 +83,7 @@ class Browser:
         self._scrolled_to: int = -1
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
+        self.logger.info(f"Browser tracer folder{self._params['trace_folder']}")
         self._page: pw.Page | None = None
         self.logger = get_logger("Browser", self._params["start_time"])
         self.logger.info(f"Browser {self.id} instanciated")
@@ -390,6 +391,9 @@ class Browser:
     async def close(self) -> None:
         """Close the browser instance"""
         if self._params["tracer"]:
+            self.logger.info(
+                f"Saving trace to {os.path.join(self._params['trace_folder'], 'trace.zip')}"
+            )
             await self.context.tracing.stop(
                 path=os.path.join(self._params["trace_folder"], "trace.zip")
             )

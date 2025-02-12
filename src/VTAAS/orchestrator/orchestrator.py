@@ -73,6 +73,7 @@ class Orchestrator:
         self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger("Orchestrator", self.start_time)
+        self.logger.info(f"Orchestrator output folder{self.output_folder}")
         self.logger.debug("Orchestrator initialized")
         self.llm_client: LLMClient = create_llm_client(
             self.llm_provider, self.start_time
