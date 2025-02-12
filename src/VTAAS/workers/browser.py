@@ -83,10 +83,10 @@ class Browser:
         self._scrolled_to: int = -1
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
-        self.logger.info(f"Browser tracer folder{self._params['trace_folder']}")
         self._page: pw.Page | None = None
         self.logger = get_logger("Browser", self._params["start_time"])
         self.logger.info(f"Browser {self.id} instanciated")
+        self.logger.info(f"Browser tracer folder{self._params['trace_folder']}")
 
     async def initialize(self) -> None:
         """Initialize the browser instance"""
