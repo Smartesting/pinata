@@ -171,6 +171,7 @@ class Orchestrator:
             step_history.append(workers_result[0])
             self.logger.debug(f"workers merged results:\n{workers_result[0]}")
             if sequence_type == SequenceType.full and success:
+                self.logger.info(f"Test step #{exec_context.step_index} PASSED")
                 return TestStepVerdict(status=Status.PASS, history=step_history)
             if success:
                 sequence_type = await self.plan_step_followup(workers_result)
@@ -179,7 +180,9 @@ class Orchestrator:
                 recovery = await self.plan_step_recover(workers_result)
                 step_history.append("Orchestrator: Came up with a recovery solution")
                 if not recovery:
-                    self.logger.info("No recovery solution found -> Test step FAIL")
+                    self.logger.info(
+                        f"No recovery solution found -> Test step #{exec_context.step_index} FAIL"
+                    )
                     return TestStepVerdict(status=Status.FAIL, history=step_history)
                 else:
                     sequence_type = recovery

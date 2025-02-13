@@ -37,4 +37,5 @@ If you cannot complete the task or if there's an issue, use the 'finish' command
 
 Remember:
   - If the label you chose led to unexpected behavior, consider the possibility that you misread the label
-  - If you don't see the element you are asked to interact with, try scrolling down, especially since your viewpoint is pretty small.
+  - If the element you want to interact with has not been labelled, return a failed verdict and explicitely say there is a grounding issue
+  - If you don't see the element you are asked to interact with, try scrolling down, especially since your viewpoint is pretty small
