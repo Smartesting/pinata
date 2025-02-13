@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, patch
 from VTAAS.data.testcase import TestCaseCollection
 from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.schemas.llm import (
-    ClickCommand,
-    FillCommand,
+    ClickGoogleCommand,
+    FillGoogleCommand,
     FinishCommand,
     LLMActResponse,
 )
@@ -28,14 +28,14 @@ def llm_act_response_generator() -> Generator[LLMActResponse, None, None]:
             screenshot_analysis="We see a login button at the top right-end corner, labelled '2'",
             query_progress="N/A",
             next_action="Click login button labelled '2'",
-            command=ClickCommand(name="click", label=2),
+            command=ClickGoogleCommand(name="click", label=2),
         ),
         LLMActResponse(
             current_webpage_identification="Login page",
             screenshot_analysis="There's a single username field labelled '3'",
             query_progress="not yet",
             next_action="fill 'hello_AI' in username field labelled '3'",
-            command=FillCommand(name="fill", label=3, value="hello_AI"),
+            command=FillGoogleCommand(name="fill", label=3, value="hello_AI"),
         ),
         LLMActResponse(
             current_webpage_identification="Dashboard",

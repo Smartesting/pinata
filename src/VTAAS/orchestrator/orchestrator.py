@@ -1,7 +1,7 @@
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TypedDict, Unpack
+from typing import TypedDict, Unpack, override
 from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.llm.utils import create_llm_client
 from VTAAS.schemas.llm import DataExtractionEntry, SequenceType
@@ -73,8 +73,8 @@ class Orchestrator:
         self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger("Orchestrator", self.start_time)
-        self.logger.info(f"Orchestrator output folder{self.output_folder}")
         self.logger.debug("Orchestrator initialized")
+        self.logger.info(f"Orchestrator output folder: {self.output_folder}")
         self.llm_client: LLMClient = create_llm_client(
             self.llm_provider, self.start_time
         )
@@ -103,32 +103,42 @@ class Orchestrator:
                 trace_folder=self.output_folder,
             )
         _ = await self.browser.goto(exec_context.test_case.url)
-        verdict = BaseResult(status=Status.UNK)
-        for idx, test_step in enumerate(test_case):
-            exec_context.current_step = test_step
-            exec_context.step_index = idx + 1
-            verdict = await self.process_step(exec_context)
-            if verdict.status != Status.PASS:
-                self.logger.info(
-                    (
-                        f"Test case FAILED at step {exec_context.step_index}."
-                        f" {exec_context.current_step[0]} -> {exec_context.current_step[1]}"
+        verdict = TestCaseVerdict(step_index=1, status=Status.UNK)
+        try:
+            for idx, test_step in enumerate(test_case):
+                exec_context.current_step = test_step
+                exec_context.step_index = idx + 1
+                verdict = await self.process_step(exec_context)
+                if verdict.status != Status.PASS:
+                    self.logger.info(
+                        (
+                            f"Test case FAILED at step {exec_context.step_index}."
+                            f" {exec_context.current_step[0]} -> {exec_context.current_step[1]}"
+                        )
                     )
+                    return TestCaseVerdict(
+                        status=Status.FAIL, step_index=idx, explaination=None
+                    )
+                step_str = (
+                    f"{exec_context.step_index}. {test_step[0]} -> {test_step[1]}"
                 )
-                await self.browser.close()
-                return TestCaseVerdict(
-                    status=Status.FAIL, step_index=idx, explaination=None
+                step_synthesis = await self.step_postprocess(
+                    exec_context, verdict.history, exec_context.history
                 )
-            step_str = f"{exec_context.step_index}. {test_step[0]} -> {test_step[1]}"
-            step_synthesis = await self.step_postprocess(
-                exec_context, verdict.history, exec_context.history
+                exec_context.history.append(step_str)
+                if len(step_synthesis) > 0:
+                    exec_context.history.append(
+                        Orchestrator.synthesis_str(step_synthesis)
+                    )
+            return TestCaseVerdict(status=Status.PASS, explaination=None)
+        except Exception as e:
+            return TestCaseVerdict(
+                status=Status.FAIL,
+                step_index=exec_context.step_index,
+                explaination=f"Got error: {str(e)}",
             )
-            exec_context.history.append(step_str)
-            if len(step_synthesis) > 0:
-                exec_context.history.append(Orchestrator.synthesis_str(step_synthesis))
-
-        await self.browser.close()
-        return TestCaseVerdict(status=Status.PASS, explaination=None)
+        finally:
+            await self.browser.close()
 
     async def process_step(
         self, exec_context: TestExecutionContext, max_tries: int = 4
@@ -477,3 +487,6 @@ class Orchestrator:
             ) as prompt_file:
                 self._recover_prompt = prompt_file.read()
         return self._recover_prompt
+
+    async def close(self):
+        await self.browser.close()

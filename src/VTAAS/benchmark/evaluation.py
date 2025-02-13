@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import datetime
+import logging
 import os
 from pathlib import Path
 import random
@@ -128,19 +129,22 @@ async def run_evaluation(
 
     for test_case in tc_collection:
         async with async_playwright() as p:
+            test_case_folder = Path(output_folder) / f"TC_{test_case.id}"
+            test_case_folder.mkdir(exist_ok=True)
+
             browser = await Browser.create(
                 id="actor_test_integ_browser",
                 headless=False,
                 playwright=p,
-                save_screenshot=True,
+                save_screenshot=False,
+                tracer=True,
+                trace_folder=str(test_case_folder),
             )
-
-            test_case_folder = Path(output_folder) / f"TC_{test_case.id}"
-            test_case_folder.mkdir(exist_ok=True)
 
             orchestrator = Orchestrator(
                 browser=browser,
                 llm_provider=LLMProviders.OPENAI,
+                tracer=True,
                 output_folder=str(test_case_folder),
             )
 

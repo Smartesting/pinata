@@ -41,11 +41,6 @@ class BrowserParams(TypedDict, total=False):
     trace_folder: str
 
 
-class ScreenshotResult(TypedDict):
-    screenshot: NotRequired[bytes]
-    error: NotRequired[str]
-
-
 class Mark(TypedDict):
     mark: str
     element: str
@@ -86,18 +81,20 @@ class Browser:
         self._page: pw.Page | None = None
         self.logger = get_logger("Browser", self._params["start_time"])
         self.logger.info(f"Browser {self.id} instanciated")
-        self.logger.info(f"Browser tracer folder{self._params['trace_folder']}")
 
     async def initialize(self) -> None:
         """Initialize the browser instance"""
         if not self._params["playwright"]:
             self._params["playwright"] = await pw.async_playwright().start()
         self._browser = await self._params["playwright"].chromium.launch(
-            headless=self._params["headless"],
+            headless=self._params["headless"], traces_dir=self._params["trace_folder"]
         )
         self._context = await self._browser.new_context(bypass_csp=True)
         self._context.set_default_timeout(self._params["timeout"])
         if self._params["tracer"]:
+            self.logger.info(
+                f"Setting Playwright tracing ON: {self._params['trace_folder']}"
+            )
             await self._context.tracing.start(screenshots=True, snapshots=True)
         self._page = await self._context.new_page()
 
@@ -390,15 +387,14 @@ class Browser:
 
     async def close(self) -> None:
         """Close the browser instance"""
+        output_path = os.path.join(self._params["trace_folder"], "trace.zip")
         if self._params["tracer"]:
-            self.logger.info(
-                f"Saving trace to {os.path.join(self._params['trace_folder'], 'trace.zip')}"
-            )
-            await self.context.tracing.stop(
-                path=os.path.join(self._params["trace_folder"], "trace.zip")
-            )
+            self.logger.info(f"Saving trace to {output_path}")
+            await self.context.tracing.stop(path=output_path)
         if self.page:
             await self.page.close()
+        if self.context:
+            await self.context.close()
         if self._browser:
             await self._browser.close()
 
