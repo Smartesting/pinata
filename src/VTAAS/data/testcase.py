@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 from pathlib import Path
 import re
@@ -8,8 +9,6 @@ import argparse
 import time
 from typing import override
 from collections.abc import Sequence
-
-from google.genai.types import logging
 
 # Add parent directory to path for relative imports when running as script
 if __name__ == "__main__":

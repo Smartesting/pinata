@@ -264,17 +264,21 @@ class Browser:
                             "You can't scroll up: you're already at the top of the page"
                         )
                     await self.page.mouse.wheel(0, -pixels)
+                    target = max(scroll_y - pixels, 0)
                     _ = await self.page.wait_for_function(
-                        f"window.scrollY === {scroll_y - pixels}"
+                        f"window.scrollY === {target}"
                     )
 
                 case "down":
-                    if scroll_y >= page_height - viewport_height - 10:
+                    max_scroll = page_height - viewport_height
+                    if scroll_y >= max_scroll - 10:
                         return "You can't scroll down: you're already at the bottom of the page"
-                    self._scrolled_to += pixels
-                    await self.page.mouse.wheel(0, pixels)
+                    remaining_scroll = max_scroll - scroll_y
+                    scroll_amount = min(pixels, max_scroll - scroll_y)
+                    self._scrolled_to += scroll_amount
+                    await self.page.mouse.wheel(0, scroll_amount)
                     _ = await self.page.wait_for_function(
-                        f"window.scrollY === {scroll_y + pixels}"
+                        f"window.scrollY >= {scroll_amount}"
                     )
 
                 case _:

@@ -37,7 +37,9 @@ class AnthropicLLMClient(LLMClient):
     def __init__(self, start_time: float):
         load_config()
         self.start_time = start_time
-        self.logger = get_logger(__name__, self.start_time)
+        self.logger = get_logger(
+            "Anthropic LLM Client " + str(self.__hash__())[:8], self.start_time
+        )
         self.max_tries = 3
         try:
             self.aclient = AsyncAnthropic(max_retries=4)

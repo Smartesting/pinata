@@ -29,7 +29,9 @@ class GoogleLLMClient(LLMClient):
         load_config()
         self.start_time = start_time
         self.max_tries = 3
-        self.logger = get_logger("Google LLM Client", self.start_time)
+        self.logger = get_logger(
+            "Google LLM Client " + str(self.__hash__())[:8], self.start_time
+        )
         self.logger.setLevel(logging.DEBUG)
         self.client = genai.Client()
 
