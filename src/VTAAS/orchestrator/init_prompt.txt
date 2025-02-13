@@ -28,12 +28,18 @@ Make sure your act/assert planning is chronologically correct.
    - "Full": If the sequence, when completed, would fully satisfy the requirements of the test step.
    - "Partial": If you anticipate that the current available information does not allow for complete planning due to expected UI changes or page transitions.
 
-Remember:
+Your goal is to create clear, actionable sequences that will guide the worker agents in executing the test step accurately and efficiently. You must do so while rigorously adhering to the following guidelines.
+
+Planning Guidelines:
 - Be as specific and detailed as possible in your Act and Assert statements.
 - Consider the context provided by the accomplished steps and browser command history.
 - If the sequence is "partial," focus on the immediate actions and assertions that can be made with the current information.
+
+Act Guidelines:
 - Actors should have active objectives implying clicks, fill, gotos, etc. Setting focus is not enough of a task for actors.
+- It is useless to explicitely ask actors to click on elements to gain focus: do not do this
+
+Assert Guidelines:
 - Do not overly assert that things went well, focus on what the test case requires to verify
 - In case of failed assertions, only ask for assert confirmations if you clearly see the assertor might have been wrong. 
 
-Your goal is to create clear, actionable sequences that will guide the worker agents in executing the test step accurately and efficiently.

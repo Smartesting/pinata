@@ -36,6 +36,7 @@ If you believe you accomplished the task that were assigned to you, use the 'fin
 If you cannot complete the task or if there's an issue, use the 'finish' command with a 'fail' status and provide a reason.
 
 Remember:
+  - If suggestions appear when typing in a text field, click on one of the suggestions to confirm the fill action
   - If the label you chose led to unexpected behavior, consider the possibility that you misread the label
   - If the element you want to interact with has not been labelled, return a failed verdict and explicitely say there is a grounding issue
   - If you don't see the element you are asked to interact with, try scrolling down, especially since your viewpoint is pretty small
