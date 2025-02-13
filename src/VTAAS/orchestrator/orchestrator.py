@@ -119,7 +119,9 @@ class Orchestrator:
                         )
                     )
                     return TestCaseVerdict(
-                        status=Status.FAIL, step_index=idx, explaination=None
+                        status=Status.FAIL,
+                        step_index=exec_context.step_index,
+                        explaination=None,
                     )
                 step_str = (
                     f"{exec_context.step_index}. {test_step[0]} -> {test_step[1]}"
