@@ -2,7 +2,6 @@ import ast
 import base64
 from collections.abc import Iterable
 import json
-import logging
 from typing import final, override
 
 from anthropic import AsyncAnthropic

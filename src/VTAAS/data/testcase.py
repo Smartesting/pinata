@@ -166,7 +166,7 @@ class TestCaseCollection:
                         msg_candidate = None
                         action = row[1].strip() if len(row) > 1 else ""
                         expected_result = row[2].strip() if len(row) > 2 else ""
-                        failing_row = row[3].strip() if len(row) > 1 else ""
+                        failing_row = row[3].strip() if len(row) > 3 else ""
                         if action != "Actions":
                             test_cases[current_test_case]["actions"].append(action)
                         if expected_result != "Expected Result":
@@ -310,7 +310,7 @@ def main():
             print(json_output)
 
     except Exception as e:
-        self.logger.error(f"Error processing file: {str(e)}")
+        print(e)
         sys.exit(1)
 
 

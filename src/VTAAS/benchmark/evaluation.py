@@ -1,13 +1,13 @@
 import argparse
 import asyncio
 import datetime
-import logging
 import os
 from pathlib import Path
 import random
 import string
 import sys
 import time
+from urllib.error import HTTPError
 from playwright.async_api import async_playwright
 import requests
 import urllib.request
@@ -102,7 +102,7 @@ async def reset_application(port):
     while success < 2:
         try:
             urllib.request.urlopen(f"http://www.vtaas-benchmark.com:{port}/", timeout=3)
-        except TimeoutError:
+        except (TimeoutError, HTTPError):
             print("Application not on yet...")
             time.sleep(10)
             continue
@@ -110,9 +110,10 @@ async def reset_application(port):
 
 
 async def run_evaluation(
-    tc_collection: TestCaseCollection, output_folder: Path
-) -> dict[str, float]:
+    tc_collection: TestCaseCollection, output_folder: Path, provider
+) -> tuple[dict[str, tuple[Status, int]], dict[str, float]]:
     metrics: dict[str, float] = {}
+    results: dict[str, tuple[Status, int]] = {}
 
     port = (
         tc_collection.url[-5:-1]
@@ -136,19 +137,35 @@ async def run_evaluation(
                 id="actor_test_integ_browser",
                 headless=False,
                 playwright=p,
-                save_screenshot=False,
+                save_screenshot=True,
                 tracer=True,
                 trace_folder=str(test_case_folder),
             )
 
+            match provider:
+                case "openai":
+                    llm_provider = LLMProviders.OPENAI
+                case "anthropic":
+                    llm_provider = LLMProviders.ANTHROPIC
+                case "google":
+                    llm_provider = LLMProviders.GOOGLE
+
             orchestrator = Orchestrator(
                 browser=browser,
-                llm_provider=LLMProviders.OPENAI,
+                llm_provider=llm_provider,
                 tracer=True,
                 output_folder=str(test_case_folder),
             )
 
             execution_result = await orchestrator.process_testcase(test_case)
+
+            results[test_case.id] = (
+                execution_result.status,
+                execution_result.step_index,
+            )
+
+            with open(f"{output_folder}/result.json", "w") as fp:
+                json.dump(results, fp)
 
             if execution_result.status == Status.PASS:
                 if test_case.type == "F":
@@ -192,7 +209,7 @@ async def run_evaluation(
         metrics["TP"] + metrics["TN"] + metrics["FP"] + metrics["FN"]
     )
 
-    return metrics
+    return results, metrics
 
 
 async def main():
@@ -208,6 +225,11 @@ async def main():
         default="http://www.vtaas-benchmark.com:9980",
         help="Base URL for the test cases. Don't forget the :port",
     )
+
+    parser.add_argument(
+        "-p", "--provider", choices=["openai", "anthropic", "google"], default="openai"
+    )
+
     parser.add_argument(
         "-o",
         "--output",
@@ -224,9 +246,12 @@ async def main():
         # Create TestCaseCollection
         collection = TestCaseCollection(args.file, args.url)
 
-        metrics = await run_evaluation(collection, args.output)
+        results, metrics = await run_evaluation(collection, args.output, args.provider)
 
         with open(f"{args.output}/result.json", "w") as fp:
+            json.dump(results, fp)
+
+        with open(f"{args.output}/metrics.json", "w") as fp:
             json.dump(metrics, fp)
 
     except Exception as e:

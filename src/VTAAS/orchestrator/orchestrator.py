@@ -1,7 +1,7 @@
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TypedDict, Unpack, override
+from typing import TypedDict, Unpack
 from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.llm.utils import create_llm_client
 from VTAAS.schemas.llm import DataExtractionEntry, SequenceType

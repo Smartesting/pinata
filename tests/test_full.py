@@ -1,4 +1,3 @@
-import logging
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCaseCollection
