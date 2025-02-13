@@ -61,7 +61,7 @@ class Browser:
             "timeout": 3000,
             "id": uuid4().hex,
             "playwright": None,
-            "save_screenshot": False,
+            "save_screenshot": True,
             "start_time": time.time(),
             "tracer": False,
             "trace_folder": ".",
@@ -340,10 +340,11 @@ class Browser:
             return b""
 
     def _save_screenshot(self, screenshot: bytes):
-        os.makedirs("screenshots", exist_ok=True)
+        screenshots_path = os.path.join(self._params["trace_folder"], "screenshots")
+        os.makedirs(screenshots_path, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"screenshots/{self.id}_{timestamp}.png"
-        with open(filename, "wb") as f:
+        filename = f"{self.id}_{timestamp}.png"
+        with open(os.path.join(screenshots_path, filename), "wb") as f:
             _ = f.write(screenshot)
 
     async def mark_page(self):
