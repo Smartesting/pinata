@@ -58,7 +58,7 @@ class Browser:
     def __init__(self, **kwargs: Unpack[BrowserParams]):
         default_params: BrowserParams = {
             "headless": True,
-            "timeout": 3000,
+            "timeout": 10000,
             "id": uuid4().hex,
             "playwright": None,
             "save_screenshot": True,

@@ -65,17 +65,7 @@ class Actor(Worker):
         self.logger.info(f"Actor {self.id[:8]} processing query '{self.query}'")
         while verdict is None and round < self.max_rounds:
             round += 1
-            # try:
             response = await self.llm_client.act(self.conversation)
-            # except Exception as e:
-            #     self.actions.append(ActorAction(action=str(e), chain_of_thought=str(e)))
-            #     return ActorResult(
-            #         query=self.query,
-            #         status=Status.UNK,
-            #         actions=self.actions,
-            #         screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
-            #         explaination=str(e),
-            #     )
             command = response.command
             if command.name == "finish":
                 self.logger.info(
