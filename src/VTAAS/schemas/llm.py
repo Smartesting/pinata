@@ -127,6 +127,7 @@ class LLMActResponse(BaseModel):
     screenshot_analysis: str
     query_progress: str
     next_action: str
+    element_recognition: str
     command: Command
 
     def get_cot(self) -> str:
