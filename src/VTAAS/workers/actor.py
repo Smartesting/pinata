@@ -16,7 +16,12 @@ from ..schemas.llm import (
     ScrollCommand,
     SelectCommand,
 )
-from ..schemas.verdict import ActorAction, ActorResult, Status, WorkerResult
+from ..schemas.verdict import (
+    ActorAction,
+    ActorResult,
+    Status,
+    WorkerResult,
+)
 from ..workers.browser import Browser, Mark
 from ..schemas.worker import (
     ActorInput,
@@ -38,16 +43,22 @@ class Actor(Worker):
         browser: Browser,
         llm_provider: LLMProviders,
         start_time: float,
+        output_folder: str,
         max_rounds: int = 8,
     ):
         super().__init__(query, browser)
         self.type = WorkerType.ACTOR
         self.start_time = start_time
-        self.llm_client: LLMClient = create_llm_client(llm_provider, start_time)
         self.actions: list[ActorAction] = []
         self.query = query
         self.max_rounds = max_rounds
-        self.logger = get_logger("Actor " + self.id[:8], self.start_time)
+        self.output_folder = output_folder
+        self.logger = get_logger(
+            "Actor " + self.id[:8], self.start_time, self.output_folder
+        )
+        self.llm_client: LLMClient = create_llm_client(
+            llm_provider, start_time, self.output_folder
+        )
         # self.logger.setLevel(logging.DEBUG)
         self.logger.info(f"Initialized with query: {self.query}")
 
@@ -59,7 +70,9 @@ class Actor(Worker):
         await self.browser.mark_page()
         screenshot = await self.browser.screenshot()
         marks: list[Mark] = await self.browser.get_marks()
-        self._setup_conversation(input, screenshot, marks)
+        page_info: str = await self.browser.get_page_info()
+        viewport_info: str = await self.browser.get_viewport_info()
+        self._setup_conversation(input, screenshot, page_info, viewport_info, marks)
         verdict: WorkerResult | None = None
         round = 0
         self.logger.info(f"Actor {self.id[:8]} processing query '{self.query}'")
@@ -104,7 +117,7 @@ class Actor(Worker):
         await self.browser.unmark_page()
         return verdict or ActorResult(
             query=self.query,
-            status=Status.UNK,
+            status=Status.FAIL,
             actions=self.actions,
             screenshot=self._add_banner(screenshot, f'act("{self.query}")'),
             explaination="stopped after 3 rounds",
@@ -130,13 +143,18 @@ class Actor(Worker):
         return "You are part of a multi-agent systems. Your role is to perform the provided query on a web application"
 
     def _setup_conversation(
-        self, input: ActorInput, screenshot: bytes, marks: list[Mark]
+        self,
+        input: ActorInput,
+        screenshot: bytes,
+        page_info: str,
+        viewport_info: str,
+        marks: list[Mark],
     ):
         self.conversation = [
             Message(role=MessageRole.System, content=self.system_prompt),
             Message(
                 role=MessageRole.User,
-                content=self._build_user_prompt(input)
+                content=self._build_user_prompt(input, page_info, viewport_info)
                 + "\n"
                 + self._format_marks(marks),
                 screenshot=[screenshot],
@@ -159,7 +177,9 @@ class Actor(Worker):
         with open(filename, "wb") as f:
             _ = f.write(screenshot)
 
-    def _build_user_prompt(self, input: ActorInput) -> str:
+    def _build_user_prompt(
+        self, input: ActorInput, page_info: str, viewport_info: str
+    ) -> str:
         with open(
             "./src/VTAAS/workers/actor_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
@@ -171,6 +191,8 @@ class Actor(Worker):
         )
         return prompt_template.format(
             history=history,
+            page_info=page_info,
+            viewport_info=viewport_info,
             query=self.query,
         )
 

@@ -73,12 +73,14 @@ class Orchestrator:
         self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger(
-            "Orchestrator_" + str(self.__hash__())[:8], self.start_time
+            "Orchestrator_" + str(self.__hash__())[:8],
+            self.start_time,
+            self.output_folder,
         )
         self.logger.debug("Orchestrator initialized")
         self.logger.info(f"Orchestrator output folder: {self.output_folder}")
         self.llm_client: LLMClient = create_llm_client(
-            self.llm_provider, self.start_time
+            self.llm_provider, self.start_time, self.output_folder
         )
         self._exec_context: TestExecutionContext | None = None
         self._followup_prompt: str | None = None
@@ -148,6 +150,8 @@ class Orchestrator:
         self, exec_context: TestExecutionContext, max_tries: int = 4
     ) -> TestStepVerdict:
         screenshot = await self.browser.screenshot()
+        page_info: str = await self.browser.get_page_info()
+        viewport_info: str = await self.browser.get_viewport_info()
         results: list[WorkerResult] = []
         step_history: list[str | tuple[str, list[bytes]]] = []
         self.logger.info(
@@ -156,7 +160,9 @@ class Orchestrator:
                 f"{exec_context.step_index}. {exec_context.current_step[0][:20]} => {exec_context.current_step[1][:20]}"
             )
         )
-        sequence_type = await self.plan_step_init(exec_context, screenshot)
+        sequence_type = await self.plan_step_init(
+            exec_context, screenshot, page_info, viewport_info
+        )
         step_history.append(
             (
                 "Orchestrator: Planned for test step "
@@ -177,11 +183,17 @@ class Orchestrator:
             if sequence_type == SequenceType.full and success:
                 self.logger.info(f"Test step #{exec_context.step_index} PASSED")
                 return TestStepVerdict(status=Status.PASS, history=step_history)
+            page_info = await self.browser.get_page_info()
+            viewport_info = await self.browser.get_viewport_info()
             if success:
-                sequence_type = await self.plan_step_followup(workers_result)
+                sequence_type = await self.plan_step_followup(
+                    workers_result, page_info, viewport_info
+                )
                 step_history.append("Orchestrator: Planned the step further")
             else:
-                recovery = await self.plan_step_recover(workers_result)
+                recovery = await self.plan_step_recover(
+                    workers_result, page_info, viewport_info
+                )
                 step_history.append("Orchestrator: Came up with a recovery solution")
                 if not recovery:
                     self.logger.info(
@@ -197,11 +209,17 @@ class Orchestrator:
         return TestStepVerdict(status=Status.FAIL, history=step_history)
 
     async def plan_step_init(
-        self, exec_context: TestExecutionContext, screenshot: bytes
+        self,
+        exec_context: TestExecutionContext,
+        screenshot: bytes,
+        page_info: str,
+        viewport_info: str,
     ) -> SequenceType:
         """Planning for the test step: spawn workers based on LLM call."""
-        self._setup_conversation(exec_context, screenshot)
+        self._setup_conversation(exec_context, screenshot, page_info, viewport_info)
+        self.logger.info("before lLM call")
         response = await self.llm_client.plan_step(self.conversation)
+        self.logger.info("after lLM call")
         self.conversation.append(
             Message(
                 role=MessageRole.Assistant,
@@ -214,7 +232,10 @@ class Orchestrator:
         return response.sequence_type
 
     async def plan_step_followup(
-        self, workers_result: tuple[str, list[bytes]]
+        self,
+        workers_result: tuple[str, list[bytes]],
+        page_info: str,
+        viewport_info: str,
     ) -> SequenceType:
         """Continuing planning for the test step: spawn workers based on LLM call."""
         results_str, screenshots = workers_result
@@ -223,8 +244,13 @@ class Orchestrator:
         ) as prompt_file:
             results_str += prompt_file.read()
 
+        results_str += f"\n{page_info}"
+        results_str += f"\n{viewport_info}"
+
         user_msg = Message(
-            role=MessageRole.User, content=results_str, screenshot=screenshots
+            role=MessageRole.User,
+            content=results_str,
+            screenshot=screenshots,
         )
         self.conversation.append(user_msg)
         response = await self.llm_client.followup_step(self.conversation)
@@ -240,7 +266,10 @@ class Orchestrator:
         return response.sequence_type
 
     async def plan_step_recover(
-        self, workers_result: tuple[str, list[bytes]]
+        self,
+        workers_result: tuple[str, list[bytes]],
+        page_info: str,
+        viewport_info: str,
     ) -> SequenceType | bool:
         """Recover planning of the test step: spawn workers based on LLM call."""
         results_str, screenshots = workers_result
@@ -248,6 +277,9 @@ class Orchestrator:
             "./src/VTAAS/orchestrator/recover_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
             results_str += prompt_file.read()
+
+        results_str += f"\n{page_info}"
+        results_str += f"\n{viewport_info}"
 
         user_msg = Message(
             role=MessageRole.User, content=results_str, screenshot=screenshots
@@ -281,6 +313,7 @@ class Orchestrator:
             input: WorkerInput = self._prepare_worker_input(
                 exec_context, worker.type, local_history
             )
+            self.logger.info(f"Let's go {worker}")
             result = await worker.process(input=input)
             if isinstance(result, ActorResult):
                 local_history.append(worker.__str__())
@@ -374,13 +407,21 @@ class Orchestrator:
         match config.type:
             case WorkerType.ACTOR:
                 worker = Actor(
-                    config.query, self.browser, self.llm_provider, self.start_time
+                    config.query,
+                    self.browser,
+                    self.llm_provider,
+                    self.start_time,
+                    self.output_folder,
                 )
                 self.workers.append(worker)
                 self.active_workers.append(worker)
             case WorkerType.ASSERTOR:
                 worker = Assertor(
-                    config.query, self.browser, self.llm_provider, self.start_time
+                    config.query,
+                    self.browser,
+                    self.llm_provider,
+                    self.start_time,
+                    self.output_folder,
                 )
                 self.workers.append(worker)
                 self.active_workers.append(worker)
@@ -390,12 +431,14 @@ class Orchestrator:
         self,
         context: TestExecutionContext,
         screenshot: bytes,
+        page_info: str,
+        viewport_info: str,
     ):
         self.conversation = [
             Message(role=MessageRole.System, content=self._build_system_prompt()),
             Message(
                 role=MessageRole.User,
-                content=self._build_user_init_prompt(context),
+                content=self._build_user_init_prompt(context, page_info, viewport_info),
                 screenshot=[screenshot],
             ),
         ]
@@ -408,7 +451,9 @@ class Orchestrator:
             prompt_template = prompt_file.read()
         return prompt_template
 
-    def _build_user_init_prompt(self, exec_context: TestExecutionContext) -> str:
+    def _build_user_init_prompt(
+        self, exec_context: TestExecutionContext, page_info: str, viewport_info: str
+    ) -> str:
         with open(
             "./src/VTAAS/orchestrator/init_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
@@ -427,6 +472,8 @@ class Orchestrator:
             test_case=test_case,
             current_step=test_step,
             history=history,
+            page_info=page_info,
+            viewport_info=viewport_info,
         )
 
     def _build_synthesis_prompt(

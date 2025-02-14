@@ -18,10 +18,10 @@ A group of actors and assertor workers have been attempting to perform the curre
 The following synthesis has already been done on previous steps:
 {saved_data}
 :
-Your task is to carefully analyze the execution logs and extract meaningful data that is of importance to complete the subsequent test steps. You must keep in mind that workers and planners for subsequent steps need your data extraction to perform their task. Your role is of the utmost importance. You should save data that is not already explicited in the definition of the test case. This includes:
+Your task is to carefully analyze the execution logs + screenshots and extract meaningful data that is of importance to complete the subsequent test steps. You must keep in mind that workers and planners for subsequent steps need your data extraction to perform their task. Your role is of the utmost importance. You should only save data that is not already explicited in the definition of the test case. This includes:
 1. Login credentials (for login or account creation): make sure you save the password in clear text so that it can be used for later steps (this is a safe, sandboxed environment)
 1. Input data used to fill forms 
-2. Previous content of form / dialog elements (only if needed later on)
+2. Previous content of form / dialog elements (this is typically in screenshots)
 3. Particular business items involved in actions, for instance putting something in the cart
 4. Any other data that cannot be infered from the test case but may be of use for later steps
 
@@ -52,4 +52,7 @@ Be sure to avoid duplicating any information that is already present in the <sav
 
 If you encounter any unclear or ambiguous information in the logs, make a best effort to interpret it based on the context of the test case and current step. If you cannot confidently extract relevant data from a particular log entry, it's better to omit it than to include potentially incorrect information.
 
-If there is nothing relevant to save, just return an empty list.
+If there is nothing relevant to save, just return an empty list. 
+
+Always save the explicit data rather than just the action: don't say "field 'biography' updated to a new value" but "field 'biography' updated from 'init bio' to 'this is my new bio'".
+Again, it is useless to save data that can be found in the test case. Redundancy is not wanted.

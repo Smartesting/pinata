@@ -4,12 +4,14 @@ from VTAAS.llm.llm_client import LLMClient, LLMProviders
 from VTAAS.llm.openai_client import OpenAILLMClient
 
 
-def create_llm_client(provider: LLMProviders, start_time: float) -> LLMClient:
+def create_llm_client(
+    provider: LLMProviders, start_time: float, output_folder: str
+) -> LLMClient:
     """Instantiates the correct LLM client based on the provider."""
     match provider:
         case LLMProviders.GOOGLE:
-            return GoogleLLMClient(start_time)
+            return GoogleLLMClient(start_time, output_folder)
         case LLMProviders.OPENAI:
-            return OpenAILLMClient(start_time)
+            return OpenAILLMClient(start_time, output_folder)
         case LLMProviders.ANTHROPIC:
-            return AnthropicLLMClient(start_time)
+            return AnthropicLLMClient(start_time, output_folder)

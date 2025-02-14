@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from typing import final, override
 
@@ -24,15 +25,23 @@ class ElapsedTimeFormatter(logging.Formatter):
         return super().format(record)
 
 
-def get_logger(name: str, start_time: float) -> logging.Logger:
+def get_logger(name: str, start_time: float, output_folder: str) -> logging.Logger:
     """Configure and return a logger instance with elapsed time formatting."""
     logger = logging.getLogger(name)
 
     if not logger.handlers:
-        handler = logging.StreamHandler()
+        os.makedirs(output_folder, exist_ok=True)
         formatter = ElapsedTimeFormatter(start_time)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+
+        log_file = os.path.join(output_folder, "execution.log")
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+
+        logger.addHandler(console_handler)
+        logger.addHandler(file_handler)
         logger.setLevel(logging.INFO)
 
     return logger

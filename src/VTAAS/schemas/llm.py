@@ -8,7 +8,7 @@ from pydantic import (
 )
 
 
-from ..schemas.verdict import AssertionVerdict, Status
+from ..schemas.verdict import AssertionReport, Status
 from .worker import (
     AssertionChecking,
     WorkerConfig,
@@ -221,6 +221,7 @@ class LLMActGoogleResponse(BaseModel):
     screenshot_analysis: str
     query_progress: str
     next_action: str
+    element_recognition: str
     command: GoogleCommand
 
     def get_cot(self) -> str:
@@ -233,7 +234,7 @@ class LLMAssertResponse(BaseModel):
 
     page_description: str
     assertion_checking: AssertionChecking
-    verdict: AssertionVerdict
+    verdict: AssertionReport
 
     def get_cot(self) -> str:
         data = self.model_dump_json()

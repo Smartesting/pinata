@@ -25,9 +25,13 @@ class TestCase:
         expected_results: list[str],
         url: str,
         failing_info: None | tuple[int, str],
+        output_folder: str,
     ):
         self.start_time: float = time.time()
-        self.logger: logging.Logger = get_logger(__name__, self.start_time)
+        self.output_folder: str = output_folder
+        self.logger: logging.Logger = get_logger(
+            __name__, self.start_time, self.output_folder
+        )
         self._full_name: str = full_name
         self._parse_full_name(full_name)
         self.actions: list[str] = actions
@@ -107,14 +111,17 @@ class TestCaseCollection:
     # To ensure it is ignored by pytest
     __test__: bool = False
 
-    def __init__(self, file_path: str, url: str):
+    def __init__(self, file_path: str, url: str, output_folder: str = "."):
         self.file_path: str = file_path
         self.name: str = self._get_file_name()
         self.url: str = url
+        self.output_folder: str = output_folder
         self.test_cases: list[TestCase] = []
         self._parse_file()
         self.start_time: float = time.time()
-        self.logger: logging.Logger = get_logger(__name__, self.start_time)
+        self.logger: logging.Logger = get_logger(
+            __name__, self.start_time, output_folder
+        )
 
     def _get_file_name(self) -> str:
         """
@@ -208,6 +215,7 @@ class TestCaseCollection:
                 expected_results=data["expected_results"],
                 url=self.url,
                 failing_info=failing_info[i],
+                output_folder=self.output_folder,
             )
             self.test_cases.append(test_case)
 

@@ -79,7 +79,11 @@ class Browser:
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
-        self.logger = get_logger("Browser", self._params["start_time"])
+        self.logger = get_logger(
+            "Browser_" + str(self.__hash__())[8:],
+            self._params["start_time"],
+            self._params["trace_folder"],
+        )
         self.logger.info(f"Browser {self.id} instanciated")
 
     async def initialize(self) -> None:
@@ -389,6 +393,23 @@ class Browser:
         title = await self.page.title()
         url = self.page.url
         return f"Current URL: {url}\nPage title: {title}"
+
+    async def get_viewport_info(self) -> str:
+        viewport_data = await self._get_viewport_data()
+        scroll_X, scroll_Y, viewport_height, viewport_width, page_height, page_width = (
+            viewport_data["scrollX"],
+            viewport_data["scrollY"],
+            viewport_data["viewportHeight"],
+            viewport_data["viewportWidth"],
+            viewport_data["pageHeight"],
+            viewport_data["pageWidth"],
+        )
+        position_description = ""
+        if scroll_Y == 0:
+            position_description = "You are at the top of the page. "
+        elif scroll_Y >= page_height - viewport_height - 10:
+            position_description = "You are at the bottom of the page. "
+        return f"{position_description}Viewport size: {viewport_width} x {viewport_height}, Viewport position: ({scroll_X}, {scroll_Y}), Page size: {page_width} x {page_height}"
 
     async def close(self) -> None:
         """Close the browser instance"""

@@ -15,6 +15,10 @@ Multiple agents are working alongside you to complete the current test step. It 
 {assertion}
 </assertion>
 
+{page_info}
+
+{viewport_info}
+
 Present your analysis in the following format:
 
 ## Current Page Description
@@ -34,6 +38,5 @@ Additional guidelines:
 - For minor discrepancies that do not impact the test intent, report the differences but still validate the assertion if the core intent is met.
 - Consider the entire test case and current step for context, but focus solely on the specific assertion given.
 - Only set a FAIL verdict if you have proof that the test intent has been compromised. 
-- If you cannot determine whether the assertion passes or fails based on the information provided, set the verdict to UNKNOWN.
 
 Remember, your role is crucial in ensuring the accuracy of the test case execution. Be diligent and precise in your analysis.

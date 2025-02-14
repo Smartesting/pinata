@@ -37,11 +37,14 @@ import sys
 class OpenAILLMClient(LLMClient):
     """Communication with OpenAI"""
 
-    def __init__(self, start_time: float):
+    def __init__(self, start_time: float, output_folder: str):
         load_config()
         self.start_time = start_time
+        self.output_folder = output_folder
         self.logger = get_logger(
-            "OpenAI LLM Client " + str(self.__hash__())[:8], self.start_time
+            "OpenAI LLM Client " + str(self.__hash__())[:8],
+            self.start_time,
+            self.output_folder,
         )
         self.max_tries = 3
         try:

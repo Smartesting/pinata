@@ -1,12 +1,13 @@
 from enum import Enum
+from typing import Generic, TypeVar, override
 
 from pydantic import BaseModel, Field
 
 
 class Status(str, Enum):
+    UNK = "unknown"
     PASS = "success"
     FAIL = "fail"
-    UNK = "unknown"
 
 
 class BaseResult(BaseModel):
@@ -52,6 +53,6 @@ class TestCaseVerdict(BaseResult):
 WorkerResult = ActorResult | AssertorResult
 
 
-class AssertionVerdict(BaseModel):
+class AssertionReport(BaseModel):
     status: Status = Field(..., description="Verdict Status")
     discrepancies: str = None  # type: ignore

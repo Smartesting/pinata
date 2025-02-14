@@ -27,12 +27,18 @@ class Assertor(Worker):
         browser: Browser,
         llm_provider: LLMProviders,
         start_time: float,
+        output_folder: str,
     ):
         super().__init__(query, browser)
         self.type = WorkerType.ASSERTOR
         self.start_time = start_time
-        self.llm_client = create_llm_client(llm_provider, start_time)
-        self.logger = get_logger("Assertor " + self.id[:8], self.start_time)
+        self.output_folder = output_folder
+        self.llm_client = create_llm_client(
+            llm_provider, start_time, self.output_folder
+        )
+        self.logger = get_logger(
+            "Assertor " + self.id[:8], self.start_time, self.output_folder
+        )
         self.logger.info(f"initialized with query: {self.query}")
 
     @override
@@ -40,14 +46,16 @@ class Assertor(Worker):
         if not self._is_assertor_input(input):
             raise TypeError("Expected input of type AssertorInput")
         screenshot = await self.browser.screenshot()
-        self._setup_conversation(input, screenshot)
+        page_info: str = await self.browser.get_page_info()
+        viewport_info: str = await self.browser.get_viewport_info()
+        self._setup_conversation(input, screenshot, page_info, viewport_info)
         self.logger.info(f"\n\nprocessing query '{self.query}'")
         try:
             response = await self.llm_client.assert_(self.conversation)
         except Exception as e:
             return AssertorResult(
                 query=self.query,
-                status=Status.UNK,
+                status=Status.FAIL,
                 synthesis=str(e),
                 screenshot=add_banner(screenshot, f'assert("{self.query}"'),
             )
@@ -62,18 +70,29 @@ class Assertor(Worker):
     def system_prompt(self) -> str:
         return "You are part of a multi-agent systems. Your role is to assert the expected state of a web application, given a query."
 
-    def _setup_conversation(self, input: AssertorInput, screenshot: bytes):
+    def _setup_conversation(
+        self,
+        input: AssertorInput,
+        screenshot: bytes,
+        page_info: str,
+        viewport_info: str,
+    ):
         self.conversation = [
             Message(role=MessageRole.System, content=self.system_prompt),
             Message(
                 role=MessageRole.User,
-                content=self._build_user_prompt(input),
+                content=self._build_user_prompt(input, page_info, viewport_info),
                 screenshot=[screenshot],
             ),
         ]
         self.logger.debug(f"User prompt:\n\n{self.conversation[1].content}")
 
-    def _build_user_prompt(self, input: AssertorInput) -> str:
+    def _build_user_prompt(
+        self,
+        input: AssertorInput,
+        page_info: str,
+        viewport_info: str,
+    ) -> str:
         with open(
             "./src/VTAAS/workers/assertor_prompt.txt", "r", encoding="utf-8"
         ) as prompt_file:
@@ -85,6 +104,8 @@ class Assertor(Worker):
             test_case=input.test_case,
             current_step=current_step,
             assertion=self.query,
+            page_info=page_info,
+            viewport_info=viewport_info,
         )
 
     def _is_assertor_input(self, input: WorkerInput) -> TypeGuard[AssertorInput]:
