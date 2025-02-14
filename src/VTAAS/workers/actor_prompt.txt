@@ -22,7 +22,10 @@ Please follow these steps in order:
    Evaluate your progress toward completion of the act query, if any, and what remains to be done. Write N/A if it is your first round.
 
 4. Next Action:
-   Based on your analysis, the act query progress, and the work of previous agents, discuss on the best next action. Consider human web browsing habits and the logic of web design. Clearly outline which element in the webpage users will operate with as the first next target element, its detailed location, and the corresponding operation. Always justify how this action relate to the completion of the act query.
+   Based on your analysis, the act query progress, and the work of previous agents, discuss on the best next action. Consider human web browsing habits and the logic of web design. Always justify how this action relate to the completion of the act query.
+
+5. Element Recognition: 
+   Determine if the element that the next action targets is in the screenshot or not. If it is, clearly outline its detailed location, and the corresponding label.
 
 Here is the list of available commands for you to use as the next action:
 - click: Click on an element given its label. Arg: label (int)
