@@ -18,12 +18,11 @@ A group of actors and assertor workers have been attempting to perform the curre
 The following synthesis has already been done on previous steps:
 {saved_data}
 :
-Your task is to carefully analyze the execution logs and extract meaningful data that is of importance to complete the subsequent test steps. You must keep in mind that workers and planners for subsequent steps need your data extraction to perform their task. Your role is of the utmost importance. 
-
-Extract any relevant information, either in the logs or the screenshots, that could be useful for the orchestrator and workers to execute subsequent test steps, such as:
-1. Input data used to fill forms that are not explicited in the definition of the test case
+Your task is to carefully analyze the execution logs and extract meaningful data that is of importance to complete the subsequent test steps. You must keep in mind that workers and planners for subsequent steps need your data extraction to perform their task. Your role is of the utmost importance. You should save data that is not already explicited in the definition of the test case. This includes:
+1. Login credentials (for login or account creation): make sure you save the password in clear text so that it can be used for later steps (this is a safe, sandboxed environment)
+1. Input data used to fill forms 
 2. Previous content of form / dialog elements (only if needed later on)
-3. Particular business items involved in actions, for instance putting something in the cart, only if the items were not already explicited in the test case
+3. Particular business items involved in actions, for instance putting something in the cart
 4. Any other data that cannot be infered from the test case but may be of use for later steps
 
 For each piece of relevant information you find, create an entry in the following format:
