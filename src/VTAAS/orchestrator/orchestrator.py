@@ -217,9 +217,7 @@ class Orchestrator:
     ) -> SequenceType:
         """Planning for the test step: spawn workers based on LLM call."""
         self._setup_conversation(exec_context, screenshot, page_info, viewport_info)
-        self.logger.info("before lLM call")
         response = await self.llm_client.plan_step(self.conversation)
-        self.logger.info("after lLM call")
         self.conversation.append(
             Message(
                 role=MessageRole.Assistant,
@@ -313,7 +311,6 @@ class Orchestrator:
             input: WorkerInput = self._prepare_worker_input(
                 exec_context, worker.type, local_history
             )
-            self.logger.info(f"Let's go {worker}")
             result = await worker.process(input=input)
             if isinstance(result, ActorResult):
                 local_history.append(worker.__str__())

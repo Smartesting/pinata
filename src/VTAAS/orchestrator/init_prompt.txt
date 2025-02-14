@@ -46,6 +46,7 @@ Act Guidelines:
   - Actors should have active objectives implying clicks, fill, gotos, etc. Setting focus is not enough of a task for actors
   - It is useless to explicitely ask actors to click on elements to gain focus: do not do this, it can only make the whole execution crash
   - Sometimes actors are lazy and don't attempt scrolling the webpage. If it is the case, explicitely ask them to do so
+  - Actors cannot hover yet: don't ask them to
 
 Assert Guidelines:
   - Do not overly assert that things went well, focus on what the test case requires to verify
