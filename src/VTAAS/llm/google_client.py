@@ -1,8 +1,12 @@
 import ast
+from copy import deepcopy
+import json
 import logging
+import time
 from typing import final, override
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 
 from VTAAS.llm.llm_client import LLMClient
 
@@ -35,7 +39,6 @@ class GoogleLLMClient(LLMClient):
             self.start_time,
             self.output_folder,
         )
-        self.logger.setLevel(logging.DEBUG)
         self.client = genai.Client()
 
     @override
@@ -44,7 +47,9 @@ class GoogleLLMClient(LLMClient):
         attempts = 1
         while attempts <= self.max_tries:
             try:
-                self.logger.info(f"Init Plan Step Message:\n{conversation[-1].content}")
+                self.logger.debug(
+                    f"Init Plan Step Message:\n{conversation[-1].content}"
+                )
                 response = self.client.models.generate_content(
                     model="gemini-2.0-pro-exp-02-05",
                     contents=self._to_google_messages(conversation),
@@ -59,6 +64,7 @@ class GoogleLLMClient(LLMClient):
                 self.logger.error(f"Error #{attempts} in plan step call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
+                time.sleep(8)
                 attempts += 1
                 continue
 
@@ -69,12 +75,10 @@ class GoogleLLMClient(LLMClient):
                 self.logger.info(
                     f"Orchestrator Plan response:\n{llm_response.model_dump_json(indent=4)}"
                 )
-                self.logger.info(
-                    f"Received {len(llm_response.workers)} worker configurations from LLM"
-                )
                 return llm_response
 
             except Exception as e:
+                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(f"Error #{attempts} in plan step parsing: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
@@ -90,7 +94,7 @@ class GoogleLLMClient(LLMClient):
         attempts = 1
         while attempts <= self.max_tries:
             try:
-                self.logger.info(
+                self.logger.debug(
                     f"FollowUp Plan Step Message:\n{conversation[-1].content}"
                 )
                 response = self.client.models.generate_content(
@@ -107,6 +111,7 @@ class GoogleLLMClient(LLMClient):
                 self.logger.error(f"Error #{attempts} in plan followup call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
+                time.sleep(8)
                 attempts += 1
                 continue
             try:
@@ -116,12 +121,10 @@ class GoogleLLMClient(LLMClient):
                 self.logger.info(
                     f"Orchestrator Follow-Up response:\n{llm_response.model_dump_json(indent=4)}"
                 )
-                self.logger.info(
-                    f"Follow-Up: Received {len(llm_response.workers)} new worker configurations from LLM"
-                )
                 return llm_response
 
             except Exception as e:
+                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(
                     f"Error #{attempts} in plan followup parsing: {str(e)}"
                 )
@@ -139,7 +142,7 @@ class GoogleLLMClient(LLMClient):
         attempts = 1
         while attempts <= self.max_tries:
             try:
-                self.logger.info(f"Recover Step Message:\n{conversation[-1].content}")
+                self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
                 response = self.client.models.generate_content(
                     model="gemini-2.0-pro-exp-02-05",
                     contents=self._to_google_messages(conversation),
@@ -154,6 +157,7 @@ class GoogleLLMClient(LLMClient):
                 self.logger.error(f"Error #{attempts} in plan recover call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
+                time.sleep(8)
                 attempts += 1
                 continue
             try:
@@ -173,6 +177,7 @@ class GoogleLLMClient(LLMClient):
                 return llm_response
 
             except Exception as e:
+                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(
                     f"Error #{attempts} in plan recover parsing: {str(e)}"
                 )
@@ -186,16 +191,28 @@ class GoogleLLMClient(LLMClient):
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
         attempts = 1
+        error_suffix = ""
+        expected_format = GoogleLLMClient.generate_prompt_from_pydantic(LLMActResponse)
+        conversation[-1].content += expected_format
         while attempts <= self.max_tries:
+            convo = deepcopy(conversation)
+            convo[-1].content += error_suffix
+            if error_suffix:
+                self.logger.info(
+                    f"user message after error_suffix:\n{convo[-1].content}"
+                )
             try:
                 # self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
                 response = self.client.models.generate_content(
                     model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(conversation),
+                    contents=self._to_google_messages(convo),
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=LLMActGoogleResponse,
-                        temperature=0,
+                        # response_schema=LLMActGoogleResponse,
+                        temperature=0
+                        + (
+                            0.2 * (attempts - 1)
+                        ),  # We increase the temp with the failures to expect a different output
                         seed=192837465,
                     ),
                 )
@@ -203,6 +220,7 @@ class GoogleLLMClient(LLMClient):
                 self.logger.error(f"Error #{attempts} in act call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
+                time.sleep(8)
                 attempts += 1
                 continue
             try:
@@ -218,7 +236,13 @@ class GoogleLLMClient(LLMClient):
                 return llm_response
 
             except Exception as e:
+                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(f"Error #{attempts} in act parsing: {str(e)}")
+                error_suffix = (
+                    "\nNote that your last answer could not be parsed by pydantic:"
+                    f"\n{str(e)}\nPlease ensure you respect the provided response schema. "
+                    "In case of a failed status, make sure to explicitely mention the finish command."
+                )
                 if attempts >= self.max_tries:
                     raise
                 attempts += 1
@@ -231,7 +255,7 @@ class GoogleLLMClient(LLMClient):
         attempts = 1
         while attempts <= self.max_tries:
             try:
-                self.logger.info(f"Assertor User Message:\n{conversation[-1].content}")
+                self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
                 response = self.client.models.generate_content(
                     model="gemini-2.0-pro-exp-02-05",
                     contents=self._to_google_messages(conversation),
@@ -246,6 +270,7 @@ class GoogleLLMClient(LLMClient):
                 self.logger.error(f"Error #{attempts} in assert call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
+                time.sleep(8)
                 attempts += 1
                 continue
             try:
@@ -260,6 +285,7 @@ class GoogleLLMClient(LLMClient):
                 return llm_response
 
             except Exception as e:
+                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(f"Error #{attempts} in assert parsing: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
@@ -299,6 +325,7 @@ class GoogleLLMClient(LLMClient):
                 )
                 if attempts >= self.max_tries:
                     raise
+                time.sleep(8)
                 attempts += 1
                 continue
             try:
@@ -315,6 +342,7 @@ class GoogleLLMClient(LLMClient):
                 return llm_response
 
             except Exception as e:
+                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(
                     f"Error #{attempts} in data extraction parsing: {str(e)}"
                 )
@@ -323,6 +351,19 @@ class GoogleLLMClient(LLMClient):
                 attempts += 1
                 continue
         raise Exception("could not send Data extraction request")
+
+    @staticmethod
+    def generate_prompt_from_pydantic(model: type[BaseModel]) -> str:
+        """
+        Google has trouble adhering to certain schemas, especially for the act call
+        """
+        schema = model.model_json_schema()
+        prompt = (
+            "\nYour response must be a json.loads parsable JSON object, following this Pydantic JSON schema:\n"
+            f"{json.dumps(schema, indent=2)}"
+            "\n please omit properties that have a default null if you don't plan on valuing them"
+        )
+        return prompt
 
     def _to_google_messages(
         self, conversation: list[Message]

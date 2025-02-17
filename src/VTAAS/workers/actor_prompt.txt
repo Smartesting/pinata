@@ -45,6 +45,6 @@ If you cannot complete the task or if there's an issue, use the 'finish' command
 Remember:
   - If suggestions appear when typing in a text field, click on one of the suggestions to confirm the fill action
   - If the label you chose led to unexpected behavior, consider the possibility that you misread the label
-  - If the element you want to interact with has not been labelled, return a failed verdict and explicitely say there is a grounding issue
+  - If the element you want to interact with has not been labelled, return with the finish command and a failed status, and explicitely say there is a grounding issue
   - If you don't see the element you are asked to interact with, try scrolling down (or up, if it makes more sense), especially since your viewpoint is pretty small
   - Sometimes target elements are not exactly described as they really are (using a synonym for instance), make sure there is no doubt before scrolling down

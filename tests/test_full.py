@@ -1,3 +1,4 @@
+import time
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCaseCollection
@@ -10,17 +11,32 @@ from VTAAS.workers.browser import Browser
 @pytest.mark.llm
 async def test_one_TC():
     async with async_playwright() as p:
+        output_folder = f"./results/debug/{time.time()}"
         browser = await Browser.create(
             id="actor_test_integ_browser",
             headless=False,
             playwright=p,
             save_screenshot=True,
+            tracer=False,
+            trace_folder=output_folder,
         )
         test_collection = TestCaseCollection(
-            "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
+            # "./data/Benchmark - Classifieds - Fail.csv",
+            "./data/Benchmark - Classifieds - Passing.csv",
+            "http://www.vtaas-benchmark.com:9980/",
+            # "./data/Benchmark - Postmill - Passing.csv",
+            # "http://www.vtaas-benchmark.com:9999/",
+            # "./data/Benchmark - OneStopMarket - Passing.csv",
+            # "http://www.vtaas-benchmark.com:7770/",
+            # "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
+            output_folder,
         )
-        test_case = test_collection.get_test_case_by_id("1")
-        orchestrator = Orchestrator(browser=browser, llm_provider=LLMProviders.GOOGLE)
+        test_case = test_collection.get_test_case_by_id("2")
+        orchestrator = Orchestrator(
+            browser=browser,
+            llm_provider=LLMProviders.GOOGLE,
+            output_folder=output_folder,
+        )
         # orchestrator.logger.setLevel(logging.DEBUG)
 
         _ = await orchestrator.process_testcase(test_case)

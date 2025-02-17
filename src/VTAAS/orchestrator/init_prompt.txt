@@ -41,9 +41,11 @@ Planning Guidelines:
   - Only set the sequence to 'partial' if you really cannot plan ahead (especially act queries) given the information you currently have given the test step and the screenshot
   - Do not plan further than what the current step encompasses. Another orchestrator will take care of the next step, if any
   - Workers do not have much memory about previous steps. Be specific with the data to use or check
+  - Worker's query should be in natural language and descriptive enough
 
 Act Guidelines:
-  - Actors should have active objectives implying clicks, fill, gotos, etc. Setting focus is not enough of a task for actors
+  - Actors should have active objectives implying clicks, fill, gotos, selects, etc. Simply etting focus or expanding a dropdown is not enough of a task for actors
+  - Actors are smart and multi-turn, take that into consideration
   - It is useless to explicitely ask actors to click on elements to gain focus: do not do this, it can only make the whole execution crash
   - Sometimes actors are lazy and don't attempt scrolling the webpage. If it is the case, explicitely ask them to do so
   - Actors cannot hover yet: don't ask them to

@@ -416,13 +416,11 @@ class AnthropicLLMClient(LLMClient):
         Anthropic does not support structured outputs. Let's ask the model to adhere to the format in the prompt
         """
         schema = model.model_json_schema()
-
         prompt = (
             "\nYour response must be a json.loads parsable JSON object, following this Pydantic JSON schema:\n"
             f"{json.dumps(schema, indent=2)}"
             "\n please omit properties that have a default null if you don't plan on valuing them"
         )
-
         return prompt
 
     @staticmethod
