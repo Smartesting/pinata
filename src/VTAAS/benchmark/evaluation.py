@@ -186,6 +186,9 @@ async def run_evaluation(
                 elif test_case.type == "P":
                     metrics["FP"] = metrics["FP"] + 1
 
+        with open(f"{output_folder}/metrics.json", "w") as fp:
+            json.dump(metrics, fp)
+
         _ = await reset_application(port)
 
     metrics["TP"] = metrics["AFA"] + metrics["AFB"] + metrics["AFC"]
