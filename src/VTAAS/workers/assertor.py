@@ -1,6 +1,6 @@
 from typing import TypeGuard, final, override
 
-from VTAAS.llm.llm_client import LLMProviders
+from VTAAS.llm.llm_client import LLMProvider
 from VTAAS.llm.utils import create_llm_client
 from VTAAS.utils.banner import add_banner
 from VTAAS.utils.logger import get_logger
@@ -25,7 +25,7 @@ class Assertor(Worker):
         self,
         query: str,
         browser: Browser,
-        llm_provider: LLMProviders,
+        llm_provider: LLMProvider,
         start_time: float,
         output_folder: str,
     ):

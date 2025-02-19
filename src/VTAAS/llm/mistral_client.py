@@ -1,76 +1,118 @@
 import ast
-from copy import deepcopy
+import base64
 import json
-import logging
-import time
-from typing import final, override
-from google import genai
-from google.genai import types
+from logging import Logger
+import os
+from typing import override
+
+from mistralai import JSONSchema, Mistral
+from mistralai.extra.utils import response_format
+from mistralai.models import (
+    AssistantMessage,
+    ImageURL,
+    ImageURLChunk,
+    Messages,
+    ResponseFormat,
+    ResponseFormats,
+    SystemMessage,
+    TextChunk,
+    UserMessage,
+    UserMessageContent,
+)
 from pydantic import BaseModel
 
 from VTAAS.llm.llm_client import LLMClient
 
-from ..schemas.worker import Message, MessageRole
+
+from ..schemas.worker import Message, MessageRole, WorkerConfig, WorkerType
 from ..schemas.llm import (
-    LLMActGoogleResponse,
+    DataExtractionEntry,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
+    SequenceType,
 )
 
 from ..utils.logger import get_logger
 from ..utils.config import load_config
+import sys
 
 
-@final
-class GoogleLLMClient(LLMClient):
-    """Communication with OpenAI"""
+class MistralLLMClient(LLMClient):
+    """Communication with Mistral"""
 
-    def __init__(self, start_time: float, output_folder: str):
+    def __init__(
+        self, start_time: float, output_folder: str, model: str = "pixtral-large-latest"
+    ):
         load_config()
-        self.start_time = start_time
-        self.output_folder = output_folder
-        self.max_tries = 3
-        self.logger = get_logger(
-            "Google LLM Client " + str(self.__hash__())[:8],
+        self.start_time: float = start_time
+        self.output_folder: str = output_folder
+        self.model: str = model
+        self.logger: Logger = get_logger(
+            "Mistral LLM Client " + str(self.__hash__())[:8],
             self.start_time,
             self.output_folder,
         )
-        self.client = genai.Client()
+        self.max_tries: int = 3
+        try:
+            self.aclient: Mistral = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
+        except Exception as e:
+            self.logger.fatal(e, exc_info=True)
+            sys.exit(1)
 
     @override
     async def plan_step(self, conversation: list[Message]) -> LLMTestStepPlanResponse:
         """Get list of act/assert workers from LLM."""
         attempts = 1
+        expected_format = MistralLLMClient.generate_prompt_from_pydantic_model(
+            LLMTestStepPlanResponse(
+                current_step_analysis="{{ current step analysis }}",
+                screenshot_analysis="{{ screenshot analysis }}",
+                previous_actions_analysis="{{ previous actions analysis }}",
+                workers=[
+                    WorkerConfig(type=WorkerType.ACTOR, query="act query"),
+                    WorkerConfig(type=WorkerType.ASSERTOR, query="assert query"),
+                ],
+                sequence_type=SequenceType.full,
+            )
+        )
+        conversation[-1].content += expected_format
+        preshot_assistant = Message(
+            role=MessageRole.Assistant,
+            content='{"',
+        )
+        conversation.append(preshot_assistant)
         while attempts <= self.max_tries:
             try:
                 self.logger.debug(
                     f"Init Plan Step Message:\n{conversation[-1].content}"
                 )
-                response = self.client.models.generate_content(
-                    model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(conversation),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=LLMTestStepPlanResponse,
-                        temperature=0,
-                        seed=192837465,
-                    ),
+                # resp_format = ResponseFormat(
+                #     type="json_schema",
+                #     json_schema=JSONSchema(
+                #         name="Test step plan response",
+                #         schema_definition=LLMTestStepPlanResponse.model_json_schema(),
+                #     ),
+                # )
+                response = await self.aclient.chat.complete_async(
+                    model=self.model,
+                    messages=self._to_mistral_messages(conversation),
+                    temperature=0,
+                    frequency_penalty=0.7,
+                    response_format={"type": "json_object"},
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in plan step call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
-                time.sleep(20)
                 attempts += 1
                 continue
-
             try:
                 llm_response = LLMTestStepPlanResponse.model_validate(
-                    ast.literal_eval(response.text or "")
+                    ast.literal_eval(response.choices[0].message.content or "")
                 )
                 self.logger.info(
                     f"Orchestrator Plan response:\n{llm_response.model_dump_json(indent=4)}"
@@ -78,8 +120,8 @@ class GoogleLLMClient(LLMClient):
                 return llm_response
 
             except Exception as e:
-                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(f"Error #{attempts} in plan step parsing: {str(e)}")
+                self.logger.info(f"Raw response: {response.choices[0].message.content}")
                 if attempts >= self.max_tries:
                     raise
                 attempts += 1
@@ -97,26 +139,22 @@ class GoogleLLMClient(LLMClient):
                 self.logger.debug(
                     f"FollowUp Plan Step Message:\n{conversation[-1].content}"
                 )
-                response = self.client.models.generate_content(
-                    model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(conversation),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=LLMTestStepFollowUpResponse,
-                        temperature=0,
-                        seed=192837465,
-                    ),
+                response = await self.aclient.chat.complete_async(
+                    model=self.model,
+                    messages=self._to_mistral_messages(conversation),
+                    temperature=0,
+                    frequency_penalty=0.7,
+                    response_format=LLMTestStepFollowUpResponse,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in plan followup call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
-                time.sleep(20)
                 attempts += 1
                 continue
             try:
                 llm_response = LLMTestStepFollowUpResponse.model_validate(
-                    ast.literal_eval(response.text or "")
+                    ast.literal_eval(response.choices[0].message.content or "")
                 )
                 self.logger.info(
                     f"Orchestrator Follow-Up response:\n{llm_response.model_dump_json(indent=4)}"
@@ -124,7 +162,6 @@ class GoogleLLMClient(LLMClient):
                 return llm_response
 
             except Exception as e:
-                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(
                     f"Error #{attempts} in plan followup parsing: {str(e)}"
                 )
@@ -143,41 +180,31 @@ class GoogleLLMClient(LLMClient):
         while attempts <= self.max_tries:
             try:
                 self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
-                response = self.client.models.generate_content(
-                    model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(conversation),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=LLMTestStepRecoverResponse,
-                        temperature=0,
-                        seed=192837465,
-                    ),
+                response = await self.aclient.chat.complete_async(
+                    model=self.model,
+                    messages=self._to_mistral_messages(conversation),
+                    temperature=0,
+                    frequency_penalty=0.7,
+                    response_format=LLMTestStepRecoverResponse,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in plan recover call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
-                time.sleep(20)
                 attempts += 1
                 continue
             try:
+                if not response.choices[0].message.content:
+                    raise Exception("LLM response is empty")
                 llm_response = LLMTestStepRecoverResponse.model_validate(
-                    ast.literal_eval(response.text or "")
+                    ast.literal_eval(response.choices[0].message.content or "")
                 )
                 self.logger.info(
                     f"Orchestrator Recover response:\n{llm_response.model_dump_json(indent=4)}"
                 )
-                if llm_response.plan:
-                    self.logger.info(
-                        f"[Recover] Received {len(llm_response.plan.workers)} worker configurations from LLM"
-                    )
-                else:
-                    self.logger.info("[Recover] Test step is considered FAIL")
-
                 return llm_response
 
             except Exception as e:
-                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(
                     f"Error #{attempts} in plan recover parsing: {str(e)}"
                 )
@@ -191,58 +218,35 @@ class GoogleLLMClient(LLMClient):
     async def act(self, conversation: list[Message]) -> LLMActResponse:
         """Actor call"""
         attempts = 1
-        error_suffix = ""
-        expected_format = GoogleLLMClient.generate_prompt_from_pydantic(LLMActResponse)
-        conversation[-1].content += expected_format
         while attempts <= self.max_tries:
-            convo = deepcopy(conversation)
-            convo[-1].content += error_suffix
-            if error_suffix:
-                self.logger.info(
-                    f"user message after error_suffix:\n{convo[-1].content}"
-                )
             try:
-                # self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
-                response = self.client.models.generate_content(
-                    model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(convo),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        # response_schema=LLMActGoogleResponse,
-                        temperature=0
-                        + (
-                            0.2 * (attempts - 1)
-                        ),  # We increase the temp with the failures to expect a different output
-                        seed=192837465,
-                    ),
+                self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
+                response = await self.aclient.chat.complete_async(
+                    model=self.model,
+                    messages=self._to_mistral_messages(conversation),
+                    temperature=0,
+                    frequency_penalty=0.7,
+                    response_format=LLMActResponse,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in act call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
-                time.sleep(20)
                 attempts += 1
                 continue
             try:
-                if not response.text:
+                if not response.choices[0].message.content:
                     raise Exception("LLM response is empty")
-                self.logger.debug(f"Received Actor raw response:\n{response.text}")
                 llm_response = LLMActResponse.model_validate(
-                    ast.literal_eval(response.text or "")
+                    ast.literal_eval(response.choices[0].message.content or "")
                 )
                 self.logger.info(
-                    f"Actor response:\n{llm_response.model_dump_json(indent=4)}"
+                    f"Actor response {llm_response.model_dump_json(indent=4)}"
                 )
                 return llm_response
 
             except Exception as e:
-                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(f"Error #{attempts} in act parsing: {str(e)}")
-                error_suffix = (
-                    "\nNote that your last answer could not be parsed by pydantic:"
-                    f"\n{str(e)}\nPlease ensure you respect the provided response schema. "
-                    "In case of a failed status, make sure to explicitely mention the finish command."
-                )
                 if attempts >= self.max_tries:
                     raise
                 attempts += 1
@@ -256,36 +260,31 @@ class GoogleLLMClient(LLMClient):
         while attempts <= self.max_tries:
             try:
                 self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
-                response = self.client.models.generate_content(
-                    model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(conversation),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=LLMAssertResponse,
-                        temperature=0,
-                        seed=192837465,
-                    ),
+                response = await self.aclient.chat.complete_async(
+                    model=self.model,
+                    messages=self._to_mistral_messages(conversation),
+                    temperature=0,
+                    frequency_penalty=0.7,
+                    response_format=LLMAssertResponse,
                 )
             except Exception as e:
                 self.logger.error(f"Error #{attempts} in assert call: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
-                time.sleep(20)
                 attempts += 1
                 continue
             try:
-                if not response.text:
+                if not response.choices[0].message.content:
                     raise Exception("LLM response is empty")
                 llm_response = LLMAssertResponse.model_validate(
-                    ast.literal_eval(response.text or "")
+                    ast.literal_eval(response.choices[0].message.content or "")
                 )
                 self.logger.info(
-                    f"Received Assertor response {llm_response.model_dump_json(indent=4)}"
+                    f"Assertor response {llm_response.model_dump_json(indent=4)}"
                 )
                 return llm_response
 
             except Exception as e:
-                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(f"Error #{attempts} in assert parsing: {str(e)}")
                 if attempts >= self.max_tries:
                     raise
@@ -309,15 +308,12 @@ class GoogleLLMClient(LLMClient):
                 ),
             ]
             try:
-                response = self.client.models.generate_content(
-                    model="gemini-2.0-pro-exp-02-05",
-                    contents=self._to_google_messages(conversation),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=LLMDataExtractionResponse,
-                        temperature=0,
-                        seed=192837465,
-                    ),
+                response = await self.aclient.chat.complete_async(
+                    model=self.model,
+                    messages=self._to_mistral_messages(conversation),
+                    temperature=0,
+                    frequency_penalty=0.7,
+                    response_format=LLMDataExtractionResponse,
                 )
             except Exception as e:
                 self.logger.error(
@@ -325,24 +321,22 @@ class GoogleLLMClient(LLMClient):
                 )
                 if attempts >= self.max_tries:
                     raise
-                time.sleep(20)
                 attempts += 1
                 continue
             try:
-                resp_msg = response.text
+                resp_msg = response.choices[0].message.content
                 if not resp_msg:
-                    raise Exception("Data extraction response is empty")
+                    raise Exception("Data Extraction response is empty")
                 llm_response = LLMDataExtractionResponse.model_validate(
-                    ast.literal_eval(response.text or "")
+                    ast.literal_eval(response.choices[0].message.content or "")
                 )
 
                 self.logger.info(
-                    f"Received Data Extraction response:\n{llm_response.model_dump_json(indent=4)}"
+                    f"Data extraction response:\n{llm_response.model_dump_json(indent=4)}"
                 )
                 return llm_response
 
             except Exception as e:
-                self.logger.info(f"Raw response:\n{response.text}")
                 self.logger.error(
                     f"Error #{attempts} in data extraction parsing: {str(e)}"
                 )
@@ -352,42 +346,64 @@ class GoogleLLMClient(LLMClient):
                 continue
         raise Exception("could not send Data extraction request")
 
+    def _to_mistral_messages(self, conversation: list[Message]) -> list[Messages]:
+        messages: list[Messages] = []
+        for msg in conversation:
+            match msg.role:
+                case MessageRole.System:
+                    messages.append(SystemMessage(role="system", content=msg.content))
+                case MessageRole.Assistant:
+                    messages.append(
+                        AssistantMessage(role="assistant", content=msg.content)
+                    )
+                case MessageRole.User:
+                    content: UserMessageContent = []
+                    content.append(TextChunk(type="text", text=msg.content))
+                    if msg.screenshot:
+                        for screenshot in msg.screenshot:
+                            base64_screenshot = str(
+                                base64.b64encode(screenshot), "utf-8"
+                            )
+                            image = ImageURL(
+                                url=f"data:image/png;base64,{base64_screenshot}",
+                                detail="high",
+                            )
+                            content.append(
+                                ImageURLChunk(image_url=image, type="image_url")
+                            )
+                    messages.append(UserMessage(content=content, role="user"))
+        if isinstance(messages[-1], AssistantMessage):
+            messages[-1].prefix = True
+        return messages
+
     @staticmethod
-    def generate_prompt_from_pydantic(model: type[BaseModel]) -> str:
+    def generate_prompt_from_pydantic_model(model: BaseModel) -> str:
         """
-        Google has trouble adhering to certain schemas, especially for the act call
+        Mistral is supposed to handle structured outputs but does not. Let's ask the model to adhere to the format in the prompt
         """
-        schema = model.model_json_schema()
+        schema = model.model_dump_json(indent=2)
         prompt = (
-            "\nYour response must be a json.loads parsable JSON object, following this Pydantic JSON schema:\n"
+            "\nYour response must be a json.loads parsable JSON object, similar to this:\n"
             f"{json.dumps(schema, indent=2)}"
-            "\n please omit properties that have a default null if you don't plan on valuing them"
+            # "\n please omit properties that have a default null if you don't plan on valuing them"
         )
         return prompt
 
-    def _to_google_messages(
-        self, conversation: list[Message]
-    ) -> list[types.ContentUnion]:
-        messages: list[types.ContentUnion] = []
-        for msg in conversation:
-            match msg.role:
-                case MessageRole.Assistant:
-                    messages.append(
-                        types.Content(
-                            role="model", parts=[types.Part(text=msg.content)]
-                        )
-                    )
-                case MessageRole.User:
-                    content: list[types.Part] = [types.Part(text=msg.content)]
-                    if msg.screenshot:
-                        for screenshot in msg.screenshot:
-                            content.append(
-                                types.Part.from_bytes(
-                                    data=screenshot,
-                                    mime_type="image/png",
-                                )
-                            )
-                    messages.append(types.Content(role="user", parts=content))
-                case _:  # we dismiss system prompts with google, for now
-                    continue
-        return messages
+    @staticmethod
+    def generate_prompt_from_pydantic(model: type[BaseModel]) -> str:
+        """
+        Mistral is supposed to handle structured outputs but does not. Let's ask the model to adhere to the format in the prompt
+        """
+        schema = model.model_json_schema()
+        prompt = (
+            "\nYour response must be a json.loads parsable JSON object, similar to this:\n"
+            f"{json.dumps(schema, indent=2)}"
+            # "\n please omit properties that have a default null if you don't plan on valuing them"
+        )
+        return prompt
+
+    @staticmethod
+    def extract_json(response: str) -> str:
+        json_start = response.index("{")
+        json_end = response.rfind("}")
+        return response[json_start : json_end + 1]

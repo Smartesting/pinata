@@ -34,7 +34,9 @@ class LLMClient(Protocol):
     ) -> LLMDataExtractionResponse: ...
 
 
-class LLMProviders(str, Enum):
+class LLMProvider(str, Enum):
     GOOGLE = "google"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    OPENROUTER = "openrouter"
+    MISTRAL = "mistral"

@@ -9,6 +9,7 @@ dependencies = [
     "asyncio>=3.4.3",
     "google-genai>=1.0.0",
     "ipykernel>=6.29.5",
+    "mistralai>=1.5.0",
     "openai>=1.59.8",
     "pillow>=11.1.0",
     "playwright>=1.49.1",

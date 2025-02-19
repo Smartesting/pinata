@@ -15,10 +15,10 @@ import json
 
 # Add parent directory to path for relative imports when running as script
 if __name__ == "__main__":
-    sys.path.append(str(Path(__file__).parent.parent.parent))
+    sys.path.append(os.path.join(str(Path(__file__).parent), "src"))
 
 from VTAAS.data.testcase import TestCaseCollection
-from VTAAS.llm.llm_client import LLMProviders
+from VTAAS.llm.llm_client import LLMProvider
 from VTAAS.orchestrator.orchestrator import Orchestrator
 from VTAAS.schemas.verdict import Status
 from VTAAS.workers.browser import Browser
@@ -110,7 +110,7 @@ async def reset_application(port):
 
 
 async def run_evaluation(
-    tc_collection: TestCaseCollection, output_folder: Path, provider
+    tc_collection: TestCaseCollection, output_folder: Path, provider: str
 ) -> tuple[dict[str, tuple[Status, int]], dict[str, float]]:
     metrics: dict[str, float] = {}
     results: dict[str, tuple[Status, int]] = {}
@@ -135,7 +135,7 @@ async def run_evaluation(
 
             browser = await Browser.create(
                 id="actor_test_integ_browser",
-                headless=False,
+                headless=True,
                 playwright=p,
                 save_screenshot=True,
                 tracer=True,
@@ -144,11 +144,11 @@ async def run_evaluation(
 
             match provider:
                 case "openai":
-                    llm_provider = LLMProviders.OPENAI
+                    llm_provider = LLMProvider.OPENAI
                 case "anthropic":
-                    llm_provider = LLMProviders.ANTHROPIC
+                    llm_provider = LLMProvider.ANTHROPIC
                 case "google":
-                    llm_provider = LLMProviders.GOOGLE
+                    llm_provider = LLMProvider.GOOGLE
 
             orchestrator = Orchestrator(
                 browser=browser,

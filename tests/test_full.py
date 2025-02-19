@@ -1,8 +1,9 @@
+import logging
 import time
 from playwright.async_api import async_playwright
 import pytest
 from VTAAS.data.testcase import TestCaseCollection
-from VTAAS.llm.llm_client import LLMProviders
+from VTAAS.llm.llm_client import LLMProvider
 from VTAAS.orchestrator import Orchestrator
 from VTAAS.workers.browser import Browser
 
@@ -11,7 +12,7 @@ from VTAAS.workers.browser import Browser
 @pytest.mark.llm
 async def test_one_TC():
     async with async_playwright() as p:
-        output_folder = f"./results/debug/{time.time()}"
+        output_folder = "./results/google/classifieds/passing/TC10"  # {time.time()}"
         browser = await Browser.create(
             id="actor_test_integ_browser",
             headless=False,
@@ -22,19 +23,19 @@ async def test_one_TC():
         )
         test_collection = TestCaseCollection(
             # "./data/Benchmark - Classifieds - Fail.csv",
-            "./data/Benchmark - Classifieds - Passing.csv",
+            "./benchmark/classifieds_passing.csv",
             "http://www.vtaas-benchmark.com:9980/",
-            # "./data/Benchmark - Postmill - Passing.csv",
+            # "./benchmark/postmill_passing.csv",
             # "http://www.vtaas-benchmark.com:9999/",
             # "./data/Benchmark - OneStopMarket - Passing.csv",
             # "http://www.vtaas-benchmark.com:7770/",
             # "data/OneStop_Passing.csv", "http://www.vtaas-benchmark.com:7770/"
             output_folder,
         )
-        test_case = test_collection.get_test_case_by_id("2")
+        test_case = test_collection.get_test_case_by_id("10")
         orchestrator = Orchestrator(
             browser=browser,
-            llm_provider=LLMProviders.GOOGLE,
+            llm_provider=LLMProvider.GOOGLE,
             output_folder=output_folder,
         )
         # orchestrator.logger.setLevel(logging.DEBUG)

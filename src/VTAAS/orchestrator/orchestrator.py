@@ -2,7 +2,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import TypedDict, Unpack
-from VTAAS.llm.llm_client import LLMClient, LLMProviders
+from VTAAS.llm.llm_client import LLMClient, LLMProvider
 from VTAAS.llm.utils import create_llm_client
 from VTAAS.schemas.llm import DataExtractionEntry, SequenceType
 from ..data.testcase import TestCase
@@ -41,7 +41,7 @@ class TestExecutionContext:
 
 class OrchestratorParams(TypedDict, total=False):
     browser: Browser | None
-    llm_provider: LLMProviders
+    llm_provider: LLMProvider
     tracer: bool
     output_folder: str
 
@@ -52,7 +52,7 @@ class Orchestrator:
     def __init__(self, **kwargs: Unpack[OrchestratorParams]):
         default_params: OrchestratorParams = {
             "browser": None,
-            "llm_provider": LLMProviders.OPENAI,
+            "llm_provider": LLMProvider.OPENAI,
             "tracer": False,
             "output_folder": ".",
         }
@@ -68,7 +68,7 @@ class Orchestrator:
         self.workers: list[Worker] = []
         self.active_workers: list[Worker] = []
         self._browser: Browser | None = self.params["browser"]
-        self.llm_provider: LLMProviders = self.params["llm_provider"]
+        self.llm_provider: LLMProvider = self.params["llm_provider"]
         self.tracer: bool = self.params["tracer"]
         self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()

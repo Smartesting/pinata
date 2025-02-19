@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import cast
 from unittest.mock import Mock
 
@@ -7,7 +8,7 @@ from playwright.async_api import async_playwright
 from pytest_mock import MockerFixture
 
 from VTAAS.data.testcase import TestCaseCollection
-from VTAAS.llm.llm_client import LLMClient, LLMProviders
+from VTAAS.llm.llm_client import LLMClient, LLMProvider
 from VTAAS.schemas.verdict import Status
 from VTAAS.schemas.worker import AssertorInput, MessageRole
 from VTAAS.workers.assertor import Assertor
@@ -59,7 +60,7 @@ def mock_assertor_input() -> AssertorInput:
 
 @pytest.fixture
 def empty_assertor(mock_assertion: str, mock_browser: Browser) -> Assertor:
-    return Assertor(mock_assertion, mock_browser, llm_provider=LLMProviders.OPENAI)
+    return Assertor(mock_assertion, mock_browser, llm_provider=LLMProvider.OPENAI)
 
 
 @pytest.mark.asyncio
@@ -101,11 +102,12 @@ async def test_conversation(
 @pytest.mark.llm
 async def test_integ():
     logging.getLogger("VTAAS.worker.assertor").setLevel(logging.DEBUG)
-    url = "http://www.vtaas-benchmark.com:7770/"
-    test_collection = TestCaseCollection("data/OneStop_Passing.csv", url)
+    url = "http://www.vtaas-benchmark.com:9999/"
+    test_collection = TestCaseCollection("./benchmark/postmill_passing.csv", url)
     test_case = test_collection.get_test_case_by_id("1")
-    test_step = test_case.get_step(2)
-    assertion = "The page contains a 'Create an Account' link at the top right corner"
+    test_step = test_case.get_step(1)
+    # assertion = "The page contains a 'Create an Account' link at the top right corner"
+    assertion = "The page contains a search field"
     assertor_input = AssertorInput(
         test_case=str(test_case), test_step=test_step, history=None
     )
@@ -117,7 +119,12 @@ async def test_integ():
             save_screenshot=True,
         )
         _ = await browser.goto(url)
-        assertor = Assertor(assertion, browser, llm_provider=LLMProviders.OPENAI)
+        assertor = Assertor(
+            query=assertion,
+            browser=browser,
+            llm_provider=LLMProvider.OPENROUTER,
+            start_time=time.time(),
+            output_folder=f"/tmp/{str(browser.__hash__())[:8]}",
+        )
         verdict = await assertor.process(assertor_input)
-        print(verdict)
         assert verdict.status == Status.PASS

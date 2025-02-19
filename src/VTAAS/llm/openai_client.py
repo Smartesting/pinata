@@ -1,6 +1,7 @@
 import ast
 import base64
 from collections.abc import Iterable
+from logging import Logger
 from typing import final, override
 
 from openai.types.chat import (
@@ -33,22 +34,24 @@ from ..utils.config import load_config
 import sys
 
 
-@final
 class OpenAILLMClient(LLMClient):
     """Communication with OpenAI"""
 
-    def __init__(self, start_time: float, output_folder: str):
+    def __init__(
+        self, start_time: float, output_folder: str, model: str = "gpt-4o-2024-11-20"
+    ):
         load_config()
-        self.start_time = start_time
-        self.output_folder = output_folder
-        self.logger = get_logger(
+        self.start_time: float = start_time
+        self.output_folder: str = output_folder
+        self.model: str = model
+        self.logger: Logger = get_logger(
             "OpenAI LLM Client " + str(self.__hash__())[:8],
             self.start_time,
             self.output_folder,
         )
-        self.max_tries = 3
+        self.max_tries: int = 3
         try:
-            self.aclient = AsyncOpenAI()
+            self.aclient: AsyncOpenAI = AsyncOpenAI()
         except OpenAIError as e:
             self.logger.fatal(e, exc_info=True)
             sys.exit(1)
@@ -63,7 +66,7 @@ class OpenAILLMClient(LLMClient):
                     f"Init Plan Step Message:\n{conversation[-1].content}"
                 )
                 response = await self.aclient.beta.chat.completions.parse(
-                    model="gpt-4o-2024-11-20",
+                    model=self.model,
                     messages=self._to_openai_messages(conversation),
                     temperature=0,
                     seed=192837465,
@@ -105,7 +108,7 @@ class OpenAILLMClient(LLMClient):
                     f"FollowUp Plan Step Message:\n{conversation[-1].content}"
                 )
                 response = await self.aclient.beta.chat.completions.parse(
-                    model="gpt-4o-2024-11-20",
+                    model=self.model,
                     messages=self._to_openai_messages(conversation),
                     temperature=0,
                     seed=192837465,
@@ -147,7 +150,7 @@ class OpenAILLMClient(LLMClient):
             try:
                 self.logger.debug(f"Recover Step Message:\n{conversation[-1].content}")
                 response = await self.aclient.beta.chat.completions.parse(
-                    model="gpt-4o-2024-11-20",
+                    model=self.model,
                     messages=self._to_openai_messages(conversation),
                     temperature=0,
                     seed=192837465,
@@ -189,7 +192,7 @@ class OpenAILLMClient(LLMClient):
             try:
                 self.logger.debug(f"Actor User Message:\n{conversation[-1].content}")
                 response = await self.aclient.beta.chat.completions.parse(
-                    model="gpt-4o-2024-11-20",
+                    model=self.model,
                     messages=self._to_openai_messages(conversation),
                     temperature=0,
                     seed=192837465,
@@ -229,7 +232,7 @@ class OpenAILLMClient(LLMClient):
             try:
                 self.logger.debug(f"Assertor User Message:\n{conversation[-1].content}")
                 response = await self.aclient.beta.chat.completions.parse(
-                    model="gpt-4o-2024-11-20",
+                    model=self.model,
                     messages=self._to_openai_messages(conversation),
                     temperature=0,
                     seed=192837465,
@@ -278,7 +281,7 @@ class OpenAILLMClient(LLMClient):
             ]
             try:
                 response = await self.aclient.beta.chat.completions.parse(
-                    model="gpt-4o-2024-11-20",
+                    model=self.model,
                     messages=self._to_openai_messages(conversation),
                     temperature=0,
                     seed=192837465,

@@ -29,7 +29,7 @@ Present your analysis in the following format:
 - Verification: [Describe what you actually see in the screenshot]
 
 ## Verdict
-[State PASS if the assertion is verified, or FAIL if it is not]
+[State PASS if the assertion is verified, or FAIL if you found a test intent breaking anomaly]
 [Discrepancies that did not impact the test intent]
 
 Additional guidelines:

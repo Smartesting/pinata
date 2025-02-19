@@ -80,7 +80,7 @@ class Browser:
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
         self.logger = get_logger(
-            "Browser_" + str(self.__hash__())[8:],
+            "Browser " + str(self.__hash__())[:8],
             self._params["start_time"],
             self._params["trace_folder"],
         )

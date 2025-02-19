@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 from VTAAS.data.testcase import TestCaseCollection
-from VTAAS.llm.llm_client import LLMClient, LLMProviders
+from VTAAS.llm.llm_client import LLMClient, LLMProvider
 from VTAAS.schemas.llm import (
     ClickGoogleCommand,
     FillGoogleCommand,
@@ -93,7 +93,7 @@ def mock_actor_input() -> ActorInput:
 
 @pytest.fixture
 def empty_actor(mock_query: str, mock_browser: Browser) -> Actor:
-    return Actor(mock_query, mock_browser, LLMProviders.OPENAI)
+    return Actor(mock_query, mock_browser, LLMProvider.OPENAI)
 
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_actor_process_3_rounds(
         ) as mock_add_banner,
     ):
         actor = Actor(
-            query="Test Query", browser=mock_browser, llm_provider=LLMProviders.OPENAI
+            query="Test Query", browser=mock_browser, llm_provider=LLMProvider.OPENAI
         )
         result: WorkerResult = await actor.process(mock_actor_input)
 
@@ -181,7 +181,7 @@ async def test_integ():
             save_screenshot=True,
         )
         _ = await browser.goto(url)
-        actor = Actor(query, browser, LLMProviders.OPENAI)
+        actor = Actor(query, browser, LLMProvider.OPENAI)
         verdict = await actor.process(actor_input)
         print(verdict)
         assert verdict.status == Status.PASS
