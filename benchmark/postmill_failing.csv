@@ -131,7 +131,6 @@ Image, title, URL and body are visible",,
 1,Go to the site http://www.vtaas-benchmark.com:9999/ and log in with account MarvelsGrantMan136 / test1234,The Postmill tab is displayed,,
 2,"Go to the ""Wiki"" tab",A wiki page is displayed,,
 3,"Create new wiki page:
-- Enter ""introduction-to-ai"" in the ""URL"" field
 - Fill the ""Title"" field with ""Introduction to Artificial Intelligence""
 - Fill the ""Body"" field with ""This page provides an overview of AI, its history, and applications.""
 - Click on the ""Save"" button",The created page is displayed,,
