@@ -75,7 +75,7 @@ It contains:
 ►,TC-7-F :: Submission,,Fail,
 #,Actions,Expected Result,Expected Failure,
 1,Go to the site http://www.vtaas-benchmark.com:9999/ and log in with account MarvelsGrantMan136 / test1234,The Postmill tab is displayed,,
-1,"Click on the ""Submit"" tab","the ""Create submission"" page appears. It contains:
+2,"Click on the ""Submit"" tab","the ""Create submission"" page appears. It contains:
 - a URL / Image field
 - A title (mandatory)
 - A body with ""Markdown allowed"" below and a link to syntax references
