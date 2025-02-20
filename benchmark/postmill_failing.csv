@@ -81,11 +81,11 @@ It contains:
 - A body with ""Markdown allowed"" below and a link to syntax references
 - A mandatory ""Forum"" drop-down list
 - A create submission button",,
-2,Fill in the title field with: The tester's tavern,The title is filled in,,
-3,"Select ""science"" in Forum, then click on ""Create submission"".","The post is created
+3,Fill in the title field with: The tester's tavern,The title is filled in,,
+4,"Select ""science"" in Forum, then click on ""Create submission"".","The post is created
 A page is displayed with the post and below the comments",,
-4,Add a comment but then click on the cancel button,The page is redirected to the /f/science forum,"Reason for failure: Changed ""and submit"" for ""but then cancel""",
-5,Click on the notification button to go and check if the deleted notification is added,The notification page is displayed with a message,,
+5,Add a comment but then click on the cancel button,The page is redirected to the /f/science forum,"Reason for failure: Changed ""and submit"" for ""but then cancel""",
+6,Click on the notification button to go and check if the deleted notification is added,The notification page is displayed with a message,,
 ,,,,
 ►,TC-8-F :: Post submission - The URL field remains empty after entry ,,Fail,
 #,Actions,Expected Result,Expected Failure,
