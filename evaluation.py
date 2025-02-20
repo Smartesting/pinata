@@ -129,6 +129,7 @@ async def run_evaluation(
     metrics["AFC"] = 0
 
     for test_case in tc_collection:
+        _ = await reset_application(port)
         async with async_playwright() as p:
             test_case_folder = Path(output_folder) / f"TC_{test_case.id}"
             test_case_folder.mkdir(exist_ok=True)
@@ -197,8 +198,6 @@ async def run_evaluation(
 
         with open(f"{output_folder}/metrics.json", "w") as fp:
             json.dump(metrics, fp)
-
-        _ = await reset_application(port)
 
     metrics["TP"] = metrics["AFA"] + metrics["AFB"] + metrics["AFC"]
     metrics["accuracy"] = (metrics["TP"] + metrics["TN"]) / (
