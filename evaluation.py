@@ -111,9 +111,9 @@ async def reset_application(port):
 
 async def run_evaluation(
     tc_collection: TestCaseCollection, output_folder: Path, provider: str
-) -> tuple[dict[str, tuple[Status, int]], dict[str, float]]:
+) -> tuple[dict[str, tuple[Status, int, int]], dict[str, float]]:
     metrics: dict[str, float] = {}
-    results: dict[str, tuple[Status, int]] = {}
+    results: dict[str, tuple[Status, int, int]] = {}
 
     port = (
         tc_collection.url[-5:-1]
@@ -162,6 +162,7 @@ async def run_evaluation(
             results[test_case.id] = (
                 execution_result.status,
                 execution_result.step_index,
+                test_case.failing_step,
             )
 
             with open(f"{output_folder}/result.json", "w") as fp:
