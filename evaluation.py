@@ -247,7 +247,7 @@ async def main():
         os.makedirs(args.output, exist_ok=True)
 
         # Create TestCaseCollection
-        collection = TestCaseCollection(args.file, args.url)
+        collection = TestCaseCollection(args.file, args.url, args.output)
 
         results, metrics = await run_evaluation(collection, args.output, args.provider)
 

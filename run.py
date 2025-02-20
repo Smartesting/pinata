@@ -17,8 +17,11 @@ from VTAAS.schemas.verdict import Status
 from VTAAS.workers.browser import Browser
 
 
-def deserialize_test_case(json_data: str, output_folder: str = "output") -> TestCase:
-    data = json.loads(json_data)
+def deserialize_test_case(
+    json_file_path: str, output_folder: str = "output"
+) -> TestCase:
+    with open(json_file_path, "r") as file:
+        data = json.load(file)
 
     actions = [action["action"] for action in data["actions"]]
     expected_results = [action["expectedResult"] for action in data["actions"]]
@@ -91,12 +94,13 @@ async def main():
         Path("/tmp") / f"{str(parser.__hash__())[:8]}_{str(time.time())[:8]}"
     )
     output_folder.mkdir(exist_ok=True)
+    print(f"execution logs will be stored at {output_folder}")
 
     args = parser.parse_args()
     testcase: TestCase = deserialize_test_case(args.file, str(output_folder))
 
     try:
-        await run_testcase(testcase, output_folder, args.provider)
+        await run_testcase(testcase, str(output_folder), args.provider)
 
     except Exception as e:
         print(e)

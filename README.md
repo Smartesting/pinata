@@ -20,10 +20,32 @@ uv run playwright install chromium
 
 # Run
 
-Execute the _run.py_ file with appropriate parameters. Example:
+Execute the _run.py_ file with appropriate parameters.
+-f : path to JSON file containing the test case
+-p : provider for the llm service (supported: "openai", "anthropic", "google", "mistral", "openrouter", default: "openai")
+Example:
 
 ```bash
-uv run python run.py -f test_case.json -o "./results/openai/postmill/passing" -u http://www.vtaas-benchmark.com:9980`
+uv run python run.py -f test_case.json -p google
+```
+
+The expected JSON format for a test case is as follows:
+
+```json
+{
+  "name": "test case name",
+  "url": "website url"
+  "actions": [
+    {
+      "action": "action 1",
+      "expectedResult": "assertion 1"
+    },
+    {
+      "action": "action 2",
+      "expectedResult": "assertion 2"
+    },
+  ]
+}
 ```
 
 # Benchmark
