@@ -159,11 +159,18 @@ async def run_evaluation(
 
             execution_result = await orchestrator.process_testcase(test_case)
 
-            results[test_case.id] = (
-                execution_result.status,
-                execution_result.step_index,
-                test_case.failing_step,
-            )
+            if test_case.type == "F":
+                results[test_case.id] = (
+                    execution_result.status,
+                    execution_result.step_index,
+                    test_case.failing_step,
+                )
+            else:
+                results[test_case.id] = (
+                    execution_result.status,
+                    execution_result.step_index,
+                    -1,
+                )
 
             with open(f"{output_folder}/result.json", "w") as fp:
                 json.dump(results, fp)
