@@ -5,7 +5,9 @@ from copy import deepcopy
 import json
 import logging
 import os
+import time
 from typing import final, override
+from uuid import uuid4
 
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
@@ -23,8 +25,9 @@ from pydantic import BaseModel
 from VTAAS.llm.llm_client import LLMClient
 
 
-from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
+    Message,
+    MessageRole,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
@@ -44,6 +47,7 @@ class OpenRouterLLMClient(LLMClient):
 
     def __init__(
         self,
+        name: str,
         start_time: float,
         output_folder: str,
         model: str = "meta-llama/llama-3.2-90b-vision-instruct",
@@ -52,8 +56,9 @@ class OpenRouterLLMClient(LLMClient):
         self.start_time = start_time
         self.output_folder = output_folder
         self.model = model
+        self.name: str = name
         self.logger = get_logger(
-            "OpenRouter LLM Client " + str(self.__hash__())[:8],
+            "OpenRouter LLM Client - " + self.name + " - " + uuid4().hex,
             self.start_time,
             self.output_folder,
         )

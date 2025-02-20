@@ -31,6 +31,7 @@ class ViewportData(TypedDict):
 
 
 class BrowserParams(TypedDict, total=False):
+    name: str
     playwright: pw.Playwright | None
     headless: bool
     timeout: int
@@ -57,6 +58,7 @@ class Browser:
 
     def __init__(self, **kwargs: Unpack[BrowserParams]):
         default_params: BrowserParams = {
+            "name": "missing name",
             "headless": True,
             "timeout": 10000,
             "id": uuid4().hex,
@@ -79,12 +81,15 @@ class Browser:
         self._browser: pw.Browser | None = None
         self._context: pw.BrowserContext | None = None
         self._page: pw.Page | None = None
+        self.name: str = self._params["name"]
         self.logger = get_logger(
-            "Browser " + str(self.__hash__())[:8],
+            "Browser - " + self.name + " - " + self._params["id"],
             self._params["start_time"],
             self._params["trace_folder"],
         )
         self.logger.info(f"Browser {self.id} instanciated")
+        if self.name == "missing name":
+            self.logger.warning("This browser should have a proper name!")
 
     async def initialize(self) -> None:
         """Initialize the browser instance"""
@@ -423,6 +428,7 @@ class Browser:
             await self.context.close()
         if self._browser:
             await self._browser.close()
+        self.logger.handlers.clear()
 
     async def _resolve_mark(self, mark: str) -> MarkLocatorResult:
         """

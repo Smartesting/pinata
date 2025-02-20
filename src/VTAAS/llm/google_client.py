@@ -1,18 +1,18 @@
 import ast
 from copy import deepcopy
 import json
-import logging
 import time
 from typing import final, override
+from uuid import uuid4
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
 from VTAAS.llm.llm_client import LLMClient
 
-from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
-    LLMActGoogleResponse,
+    Message,
+    MessageRole,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
@@ -29,13 +29,14 @@ from ..utils.config import load_config
 class GoogleLLMClient(LLMClient):
     """Communication with OpenAI"""
 
-    def __init__(self, start_time: float, output_folder: str):
+    def __init__(self, name: str, start_time: float, output_folder: str):
         load_config()
         self.start_time = start_time
         self.output_folder = output_folder
         self.max_tries = 3
+        self.name: str = name
         self.logger = get_logger(
-            "Google LLM Client " + str(self.__hash__())[:8],
+            "Google LLM Client - " + self.name + " - " + uuid4().hex,
             self.start_time,
             self.output_folder,
         )

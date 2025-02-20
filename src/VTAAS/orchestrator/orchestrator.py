@@ -2,9 +2,17 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import TypedDict, Unpack
+from uuid import uuid4
 from VTAAS.llm.llm_client import LLMClient, LLMProvider
 from VTAAS.llm.utils import create_llm_client
-from VTAAS.schemas.llm import DataExtractionEntry, SequenceType
+from VTAAS.schemas.llm import (
+    DataExtractionEntry,
+    Message,
+    MessageRole,
+    SequenceType,
+    WorkerConfig,
+    WorkerType,
+)
 from ..data.testcase import TestCase
 from ..schemas.verdict import (
     ActorResult,
@@ -21,13 +29,8 @@ from ..workers.assertor import Assertor
 from ..schemas.worker import (
     ActorInput,
     AssertorInput,
-    Message,
-    MessageRole,
     Worker,
-    WorkerConfig,
     WorkerInput,
-    WorkerStatus,
-    WorkerType,
 )
 
 
@@ -40,6 +43,7 @@ class TestExecutionContext:
 
 
 class OrchestratorParams(TypedDict, total=False):
+    name: str
     browser: Browser | None
     llm_provider: LLMProvider
     tracer: bool
@@ -51,6 +55,7 @@ class Orchestrator:
 
     def __init__(self, **kwargs: Unpack[OrchestratorParams]):
         default_params: OrchestratorParams = {
+            "name": "missing name",
             "browser": None,
             "llm_provider": LLMProvider.OPENAI,
             "tracer": False,
@@ -67,20 +72,23 @@ class Orchestrator:
         self.params: OrchestratorParams = default_params
         self.workers: list[Worker] = []
         self.active_workers: list[Worker] = []
+        self.name: str = self.params["name"]
         self._browser: Browser | None = self.params["browser"]
         self.llm_provider: LLMProvider = self.params["llm_provider"]
         self.tracer: bool = self.params["tracer"]
         self.output_folder: str = self.params["output_folder"]
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger(
-            "Orchestrator_" + str(self.__hash__())[:8],
+            "Orchestrator - " + self.name + " - " + uuid4().hex,
             self.start_time,
             self.output_folder,
         )
         self.logger.debug("Orchestrator initialized")
+        if self.name == "missing name":
+            self.logger.warning("This orchestrator should have a proper name!")
         self.logger.info(f"Orchestrator output folder: {self.output_folder}")
         self.llm_client: LLMClient = create_llm_client(
-            self.llm_provider, self.start_time, self.output_folder
+            self.name, self.llm_provider, self.start_time, self.output_folder
         )
         self._exec_context: TestExecutionContext | None = None
         self._followup_prompt: str | None = None
@@ -100,6 +108,7 @@ class Orchestrator:
         )
         if self._browser is None:
             self._browser = await Browser.create(
+                name=self.name,
                 timeout=3500,
                 headless=True,
                 start_time=self.start_time,
@@ -324,7 +333,7 @@ class Orchestrator:
                     f"{worker.__str__()}: Assertion could not be verified"
                 )
             results.append(result)
-            worker.status = WorkerStatus.RETIRED
+            worker.retire()
             self.active_workers.remove(worker)
         self.active_workers.clear()
         return results
@@ -404,6 +413,7 @@ class Orchestrator:
         match config.type:
             case WorkerType.ACTOR:
                 worker = Actor(
+                    self.name,
                     config.query,
                     self.browser,
                     self.llm_provider,
@@ -414,6 +424,7 @@ class Orchestrator:
                 self.active_workers.append(worker)
             case WorkerType.ASSERTOR:
                 worker = Assertor(
+                    self.name,
                     config.query,
                     self.browser,
                     self.llm_provider,
@@ -540,4 +551,6 @@ class Orchestrator:
         return self._recover_prompt
 
     async def close(self):
+        self.logger.handlers.clear()
+        self.llm_client.close()
         await self.browser.close()

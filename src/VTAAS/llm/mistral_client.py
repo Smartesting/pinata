@@ -3,7 +3,9 @@ import base64
 import json
 from logging import Logger
 import os
+import time
 from typing import override
+from uuid import uuid4
 
 from mistralai import Mistral
 from mistralai.models import (
@@ -21,8 +23,11 @@ from pydantic import BaseModel
 from VTAAS.llm.llm_client import LLMClient
 
 
-from ..schemas.worker import Message, MessageRole, WorkerConfig, WorkerType
 from ..schemas.llm import (
+    Message,
+    MessageRole,
+    WorkerConfig,
+    WorkerType,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
@@ -41,14 +46,19 @@ class MistralLLMClient(LLMClient):
     """Communication with Mistral"""
 
     def __init__(
-        self, start_time: float, output_folder: str, model: str = "pixtral-large-latest"
+        self,
+        name: str,
+        start_time: float,
+        output_folder: str,
+        model: str = "pixtral-large-latest",
     ):
         load_config()
         self.start_time: float = start_time
         self.output_folder: str = output_folder
         self.model: str = model
+        self.name: str = name
         self.logger: Logger = get_logger(
-            "Mistral LLM Client " + str(self.__hash__())[:8],
+            "Mistral LLM Client - " + self.name + " - " + uuid4().hex,
             self.start_time,
             self.output_folder,
         )

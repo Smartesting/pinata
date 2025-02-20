@@ -1,7 +1,7 @@
 from enum import Enum
+from logging import Logger
 from typing import Protocol
 
-from ..schemas.worker import Message
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
@@ -9,10 +9,13 @@ from ..schemas.llm import (
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
+    Message,
 )
 
 
 class LLMClient(Protocol):
+    logger: Logger
+
     async def plan_step(
         self, conversation: list[Message]
     ) -> LLMTestStepPlanResponse: ...
@@ -32,6 +35,9 @@ class LLMClient(Protocol):
     async def step_postprocess(
         self, system: str, user: str, screenshots: list[bytes]
     ) -> LLMDataExtractionResponse: ...
+
+    def close(self):
+        self.logger.handlers.clear()
 
 
 class LLMProvider(str, Enum):

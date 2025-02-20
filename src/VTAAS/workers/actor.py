@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-import time
 from typing import TypeGuard, final, override
 
 from VTAAS.llm.llm_client import LLMClient, LLMProvider
@@ -14,8 +13,11 @@ from ..schemas.llm import (
     FillCommand,
     FinishCommand,
     GotoCommand,
+    Message,
+    MessageRole,
     ScrollCommand,
     SelectCommand,
+    WorkerType,
 )
 from ..schemas.verdict import (
     ActorAction,
@@ -26,11 +28,8 @@ from ..schemas.verdict import (
 from ..workers.browser import Browser, Mark
 from ..schemas.worker import (
     ActorInput,
-    Message,
-    MessageRole,
     Worker,
     WorkerInput,
-    WorkerType,
 )
 
 
@@ -40,6 +39,7 @@ class Actor(Worker):
 
     def __init__(
         self,
+        name: str,
         query: str,
         browser: Browser,
         llm_provider: LLMProvider,
@@ -47,7 +47,7 @@ class Actor(Worker):
         output_folder: str,
         max_rounds: int = 8,
     ):
-        super().__init__(query, browser)
+        super().__init__(name, query, browser)
         self.type = WorkerType.ACTOR
         self.start_time = start_time
         self.actions: list[ActorAction] = []
@@ -55,10 +55,12 @@ class Actor(Worker):
         self.max_rounds = max_rounds
         self.output_folder = output_folder
         self.logger = get_logger(
-            "Actor " + self.id[:8], self.start_time, self.output_folder
+            "Actor - " + self.name + " - " + self.id,
+            self.start_time,
+            self.output_folder,
         )
         self.llm_client: LLMClient = create_llm_client(
-            llm_provider, start_time, self.output_folder
+            self.name, llm_provider, start_time, self.output_folder
         )
         # self.logger.setLevel(logging.DEBUG)
         self.logger.info(f"Initialized with query: {self.query}")

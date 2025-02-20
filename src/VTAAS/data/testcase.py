@@ -30,7 +30,7 @@ class TestCase:
         self.start_time: float = time.time()
         self.output_folder: str = output_folder
         self.logger: logging.Logger = get_logger(
-            __name__, self.start_time, self.output_folder
+            __name__ + str(time.time())[-8:], self.start_time, self.output_folder
         )
         self._full_name: str = full_name
         self._parse_full_name(full_name)

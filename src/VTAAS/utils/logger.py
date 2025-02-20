@@ -29,19 +29,21 @@ def get_logger(name: str, start_time: float, output_folder: str) -> logging.Logg
     """Configure and return a logger instance with elapsed time formatting."""
     logger = logging.getLogger(name)
 
-    if not logger.handlers:
-        os.makedirs(output_folder, exist_ok=True)
-        formatter = ElapsedTimeFormatter(start_time)
+    if logger.handlers:
+        raise ValueError(f"\n\nThe logger {name} should not already exist!")
 
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
+    os.makedirs(output_folder, exist_ok=True)
+    formatter = ElapsedTimeFormatter(start_time)
 
-        log_file = os.path.join(output_folder, "execution.log")
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(formatter)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
 
-        logger.addHandler(console_handler)
-        logger.addHandler(file_handler)
-        logger.setLevel(logging.INFO)
+    log_file = os.path.join(output_folder, "execution.log")
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
 
     return logger

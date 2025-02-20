@@ -1,41 +1,19 @@
 from enum import Enum
+from logging import Logger
 from uuid import uuid4
 
 from pydantic import BaseModel
 
+from VTAAS.llm.llm_client import LLMClient
+from VTAAS.schemas.llm import Message, WorkerType
 from VTAAS.workers.browser import Browser
 from ..schemas.verdict import WorkerResult
 from abc import ABC, abstractmethod
 
 
-class MessageRole(str, Enum):
-    System = "system"
-    User = "user"
-    Assistant = "assistant"
-
-
-class Message(BaseModel):
-    role: MessageRole
-    content: str
-    screenshot: list[bytes] | None = None
-
-    class Config:
-        use_enum_values: bool = True
-
-
-class WorkerType(str, Enum):
-    ACTOR = "act"
-    ASSERTOR = "assert"
-
-
 class WorkerStatus(str, Enum):
     ACTIVE = "active"
     RETIRED = "retired"
-
-
-class WorkerConfig(BaseModel):
-    type: WorkerType
-    query: str
 
 
 class ActorInput(BaseModel):
@@ -53,17 +31,15 @@ class AssertorInput(BaseModel):
 WorkerInput = ActorInput | AssertorInput
 
 
-class AssertionChecking(BaseModel):
-    observation: str
-    verification: str
-
-
 class Worker(ABC):
     """Abstract worker with common attributes."""
 
     type: WorkerType
+    logger: Logger
+    llm_client: LLMClient
 
-    def __init__(self, query: str, browser: Browser):
+    def __init__(self, name: str, query: str, browser: Browser):
+        self.name: str = name
         self.status: WorkerStatus = WorkerStatus.ACTIVE
         self.query: str = query
         self.id: str = uuid4().hex
@@ -72,3 +48,8 @@ class Worker(ABC):
 
     @abstractmethod
     async def process(self, input: WorkerInput) -> WorkerResult: ...
+
+    def retire(self):
+        self.status = WorkerStatus.RETIRED
+        self.llm_client.close()
+        self.logger.handlers.clear()

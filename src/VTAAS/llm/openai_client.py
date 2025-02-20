@@ -2,7 +2,9 @@ import ast
 import base64
 from collections.abc import Iterable
 from logging import Logger
-from typing import final, override
+import time
+from typing import override
+from uuid import uuid4
 
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
@@ -19,7 +21,6 @@ from openai import OpenAIError, AsyncOpenAI
 from VTAAS.llm.llm_client import LLMClient
 
 
-from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
     LLMActResponse,
     LLMAssertResponse,
@@ -27,6 +28,8 @@ from ..schemas.llm import (
     LLMTestStepFollowUpResponse,
     LLMTestStepPlanResponse,
     LLMTestStepRecoverResponse,
+    Message,
+    MessageRole,
 )
 
 from ..utils.logger import get_logger
@@ -38,14 +41,19 @@ class OpenAILLMClient(LLMClient):
     """Communication with OpenAI"""
 
     def __init__(
-        self, start_time: float, output_folder: str, model: str = "gpt-4o-2024-11-20"
+        self,
+        name: str,
+        start_time: float,
+        output_folder: str,
+        model: str = "gpt-4o-2024-11-20",
     ):
         load_config()
         self.start_time: float = start_time
         self.output_folder: str = output_folder
         self.model: str = model
+        self.name: str = name
         self.logger: Logger = get_logger(
-            "OpenAI LLM Client " + str(self.__hash__())[:8],
+            "OpenAI LLM Client - " + self.name + " - " + uuid4().hex,
             self.start_time,
             self.output_folder,
         )

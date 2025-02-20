@@ -9,10 +9,36 @@ from pydantic import (
 
 
 from ..schemas.verdict import AssertionReport, Status
-from .worker import (
-    AssertionChecking,
-    WorkerConfig,
-)
+
+
+class MessageRole(str, Enum):
+    System = "system"
+    User = "user"
+    Assistant = "assistant"
+
+
+class Message(BaseModel):
+    role: MessageRole
+    content: str
+    screenshot: list[bytes] | None = None
+
+    class Config:
+        use_enum_values: bool = True
+
+
+class WorkerType(str, Enum):
+    ACTOR = "act"
+    ASSERTOR = "assert"
+
+
+class WorkerConfig(BaseModel):
+    type: WorkerType
+    query: str
+
+
+class AssertionChecking(BaseModel):
+    observation: str
+    verification: str
 
 
 class SequenceType(str, Enum):

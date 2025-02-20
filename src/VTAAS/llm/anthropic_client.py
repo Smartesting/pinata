@@ -2,7 +2,9 @@ import ast
 import base64
 from collections.abc import Iterable
 import json
+import time
 from typing import final, override
+from uuid import uuid4
 
 from anthropic import AsyncAnthropic
 from anthropic.types import TextBlock
@@ -14,8 +16,9 @@ from pydantic import BaseModel
 from VTAAS.llm.llm_client import LLMClient
 
 
-from ..schemas.worker import Message, MessageRole
 from ..schemas.llm import (
+    Message,
+    MessageRole,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
@@ -33,12 +36,13 @@ import sys
 class AnthropicLLMClient(LLMClient):
     """Communication with OpenAI"""
 
-    def __init__(self, start_time: float, output_folder: str):
+    def __init__(self, name: str, start_time: float, output_folder: str):
         load_config()
         self.start_time = start_time
         self.output_folder = output_folder
+        self.name: str = name
         self.logger = get_logger(
-            "Anthropic LLM Client " + str(self.__hash__())[:8],
+            "Anthropic LLM Client - " + self.name + " - " + uuid4().hex,
             self.start_time,
             self.output_folder,
         )

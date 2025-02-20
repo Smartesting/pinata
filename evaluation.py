@@ -134,7 +134,7 @@ async def run_evaluation(
             test_case_folder.mkdir(exist_ok=True)
 
             browser = await Browser.create(
-                id="actor_test_integ_browser",
+                name=f"TC_{test_case.id}",
                 headless=True,
                 playwright=p,
                 save_screenshot=True,
@@ -151,6 +151,7 @@ async def run_evaluation(
                     llm_provider = LLMProvider.GOOGLE
 
             orchestrator = Orchestrator(
+                name=f"TC_{test_case.id}",
                 browser=browser,
                 llm_provider=llm_provider,
                 tracer=True,

@@ -2,6 +2,7 @@ from typing import TypeGuard, final, override
 
 from VTAAS.llm.llm_client import LLMProvider
 from VTAAS.llm.utils import create_llm_client
+from VTAAS.schemas.llm import Message, MessageRole, WorkerType
 from VTAAS.utils.banner import add_banner
 from VTAAS.utils.logger import get_logger
 
@@ -9,11 +10,8 @@ from ..schemas.verdict import AssertorResult, Status
 from ..workers.browser import Browser
 from ..schemas.worker import (
     AssertorInput,
-    Message,
-    MessageRole,
     Worker,
     WorkerInput,
-    WorkerType,
 )
 
 
@@ -23,21 +21,24 @@ class Assertor(Worker):
 
     def __init__(
         self,
+        name: str,
         query: str,
         browser: Browser,
         llm_provider: LLMProvider,
         start_time: float,
         output_folder: str,
     ):
-        super().__init__(query, browser)
+        super().__init__(name, query, browser)
         self.type = WorkerType.ASSERTOR
         self.start_time = start_time
         self.output_folder = output_folder
         self.llm_client = create_llm_client(
-            llm_provider, start_time, self.output_folder
+            self.name, llm_provider, start_time, self.output_folder
         )
         self.logger = get_logger(
-            "Assertor " + self.id[:8], self.start_time, self.output_folder
+            "Assertor - " + self.name + " - " + self.id,
+            self.start_time,
+            self.output_folder,
         )
         self.logger.info(f"initialized with query: {self.query}")
 
