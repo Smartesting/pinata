@@ -20,9 +20,11 @@ uv run playwright install chromium
 
 # Run
 
-Execute the _run.py_ file with appropriate parameters.
--f : path to JSON file containing the test case
--p : provider for the llm service (supported: "openai", "anthropic", "google", "mistral", "openrouter", default: "openai")
+Execute the _run.py_ file with the appropriate parameters:
+
+- -f: path to JSON file containing the test case
+- -p: provider for the llm service (supported: "openai", "anthropic", "google", "mistral", "openrouter", default: "openai")
+
 Example:
 
 ```bash
@@ -51,26 +53,25 @@ The expected JSON format for a test case is as follows:
 # Benchmark
 
 To run the benchmark presented in the paper, execute the _evaluation.py_ file with the appropriate parameters:
--f : path to csv file with test cases
--o : output folder for the test case verdict, playwright trace, screenshots, and execution logs
--u : url of the application to be evaluated (default: http://www.vtaas-benchmark.com:9980)
--p : provider for the llm service (supported: "openai", "anthropic", "google", "mistral", "openrouter", default: "openai")
 
-Examples:
+- -f: path to csv file with test cases
+- -o: output folder for the test case verdict, playwright trace, screenshots, and execution logs
+- -u: url of the application to be evaluated (default: http://www.vtaas-benchmark.com:9980)
+- -p: provider for the llm service (supported: "openai", "anthropic", "google", "mistral", "openrouter", default: "openai")
 
-Classified
+### Classified
 
-`uv run python evaluation.py -f "./benchmark/classifieds_passing.csv" -o "./results/openai/postmill/passing" -u http://www.vtaas-benchmark.com:9980`
+`uv run python evaluation.py -f "./benchmark/classifieds_passing.csv" -o "./results/openai/classifieds/passing" -u http://www.vtaas-benchmark.com:9980`
 
-`uv run python evaluation.py -f "./benchmark/classifieds_failing.csv" -o "./results/openai/postmill/failing" -u http://www.vtaas-benchmark.com:9980`
+`uv run python evaluation.py -f "./benchmark/classifieds_failing.csv" -o "./results/openai/classifieds/failing" -u http://www.vtaas-benchmark.com:9980`
 
-OneStopShop
+### OneStopShop
 
 `uv run python evaluation.py -f "./benchmark/onestopshop_passing.csv" -o "./results/openai/onestopshop/passing" -u http://www.vtaas-benchmark.com:7770`
 
 `uv run python evaluation.py -f "./benchmark/onestopshop_failing.csv" -o "./results/openai/onestopshop/failing" -u http://www.vtaas-benchmark.com:7770`
 
-Postmill
+### Postmill
 
 `uv run python evaluation.py -f "./benchmark/postmill_passing.csv" -o "./results/openai/postmill/passing" -u http://www.vtaas-benchmark.com:9999`
 

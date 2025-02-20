@@ -5,15 +5,12 @@ from logging import Logger
 import os
 from typing import override
 
-from mistralai import JSONSchema, Mistral
-from mistralai.extra.utils import response_format
+from mistralai import Mistral
 from mistralai.models import (
     AssistantMessage,
     ImageURL,
     ImageURLChunk,
     Messages,
-    ResponseFormat,
-    ResponseFormats,
     SystemMessage,
     TextChunk,
     UserMessage,
@@ -26,7 +23,6 @@ from VTAAS.llm.llm_client import LLMClient
 
 from ..schemas.worker import Message, MessageRole, WorkerConfig, WorkerType
 from ..schemas.llm import (
-    DataExtractionEntry,
     LLMActResponse,
     LLMAssertResponse,
     LLMDataExtractionResponse,
