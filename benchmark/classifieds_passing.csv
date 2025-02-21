@@ -85,8 +85,8 @@
 4,"Sort by higher price first in the ""Sort by:"" drop-down menu
 ",The list is ordered by advertised price: most expensive first. 
 5,Observe first element,"Title of the item should be displayed in blue. Price with 2 decimals should be displayed by showing US dollars symbol. A short description should be displayed terminating with ""…"""
-6,Click on the title of the first element,"The page should contain the title in the top. Then yello box should contain price aith currency USD dollars displayed
-Fileds published date should be populated (date less or equal to today) Location should be displayed following the template City­, State, United States 
+6,Click on the title of the first element,"The page should contain the title in the top. Price in currency USD dollars displayed
+Fields published date should be populated (date less or equal to today) Location should be displayed following the template City­, State, United States 
 Description is present
 Contact seller button is displayed
 Share button is displayed"
