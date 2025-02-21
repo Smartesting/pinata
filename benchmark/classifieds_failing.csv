@@ -139,7 +139,7 @@ Business rule: The default display in grid mode is 24 ads."
 ,,,
 ►,TC-12-F :: Refine category,,Fail
 #,Actions,Expected Result,Expected Failure
-1,"Go to ""http://www.vtaas-benchmark.com:9980/""",The OsClass home page cannot be displayed,
+1,"Go to ""http://www.vtaas-benchmark.com:9980/""",The OsClass home page is displayed,
 2,Go to the search page. ,The ads listing is displayed,
 3,Refine the category with by clicking on Boats,A Chrome browser page opens,
 4,Click again on boats on the refine category section,"A message is displayed ""The boats category is already selected""",Business rule: A message informs you that you are already on the category when you click a 2nd time on the category already selected.
