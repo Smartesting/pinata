@@ -370,7 +370,7 @@ Account information have been updated."
 #,Actions,Expected Result
 1,"Type ""http://www.vtaas-benchmark.com:7770/"" on the url bar.
 And click on ""Enter"".","The Welcome page of web ""OneStopShop"" is displayed."
-2,"Enter Email and Password fields.
+2,"Enter Email and Password fields.  (emma.lopez@gmail.com and Password.123)
 Click on the buton ""Sign In"".","I'm connected on the website. The screen ""My Account"" is displayed. 
 The message ""Welcome, Emma Lopez!"" is displayed at the right on the top of the page."
 3,"Click on the tab ""My Account""","The page ""My account"" is displayed."
