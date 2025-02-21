@@ -129,11 +129,15 @@ async def run_evaluation(
     metrics["AFC"] = 0
 
     for test_case in tc_collection:
+        test_case_folder = Path(output_folder) / f"TC_{test_case.id}"
+        # test_case_folder.mkdir(exist_ok=True)
+        if not os.path.exists(test_case_folder):
+            os.makedirs(test_case_folder)
+        else:
+            print(f"{test_case_folder} already exists")
+            continue
         _ = await reset_application(port)
         async with async_playwright() as p:
-            test_case_folder = Path(output_folder) / f"TC_{test_case.id}"
-            test_case_folder.mkdir(exist_ok=True)
-
             browser = await Browser.create(
                 name=f"TC_{test_case.id}",
                 headless=True,
