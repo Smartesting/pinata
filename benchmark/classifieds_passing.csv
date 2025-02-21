@@ -176,7 +176,7 @@ then click on ""Send"".",An error message stating that the friend's e-mail addre
 4,"Select the first proposal from the drop-down menu in the ""Category"" field",The error message no longer mentions the category
 5,"Enter the letter R in the ""Title"" field","The error message regarding the title has changed, saying that a minimum of 5 characters is required for the title."
 6,"Complete the content of the ""Title"" field with ""oman statue"".","The ""Title"" field is identical to ""Roman statue"" and the error message no longer mentions the title."
-7,"Enter the letter V in the ""Description"" field",The error message regarding the description has changed, saying that at least 10 characters are required for the description.
+7,"Enter the letter V in the ""Description"" field","The error message regarding the description has changed, saying that at least 10 characters are required for the description."
 8,"Write ""Very beautiful statue"" in the ""Description"" field",The error message no longer mentions the description
 9,"Select the second proposal from the drop-down menu in the ""Region"" field",Error message no longer mentions location
 10,"Write ""blake.sullivan@gmail.com"" for the email address",Error message disappears
