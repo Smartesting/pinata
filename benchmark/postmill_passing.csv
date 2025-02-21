@@ -284,8 +284,7 @@ The login and register tabs are replaced by a notification tab represented by an
 1,Go to the Forums tab,"A page with the title ""list of forums"" is displayed. It contains:
 Forums"", ""Tags"" and ""Alphabetical"" tabs.
 The list is displayed by 25, beyond that there is a pagination"
-2,Search for the AskReddit  forum,"This forum has the ""Unsubscribe"" option
-The others have the ""Subscribe"" button"
+2,Search for the AskReddit  forum,"This forum is present in the page with a ""subscribe"" button like the other forums"
 3,"Click on the ""Tags"" tab","A specific page with the title ""Tags"" is displayed"
 4,Click on Alphabetical,"A page with the title ""All forums"" is displayed.
 It contains all the forum names sorted by letter"
