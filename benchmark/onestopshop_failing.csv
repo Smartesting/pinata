@@ -21,18 +21,19 @@
 #,Actions,Expected Result,Expected Failure
 1,Go to http://www.vtaas-benchmark.com:7770/,The OneStopMarket page appears,
 2,Log in with the following details: emma.lopez@gmail.com / Password.123,"You are logged in and the message Welcome, Emma Lopez! is displayed",
-3,Go to My Wish List,"The ""My Wish List"" page is displayed",
-4,"Choose an article in the Wish List and click on ""Edit""",The details of the wishlisted article are displayed,
-5,Click on the Review Tab at the bottom,The Review Tab is displayed,
-6,"Fill the following field:
+3, "Go to the Home Page and add an item to the wish list by clicking on a heart", "The item appears in My Whish List",
+4,Go to My Wish List,"The ""My Wish List"" page is displayed",
+5,"Choose the article in the Wish List and click on ""Edit""",The details of the wishlisted article are displayed,
+6,Click on the Review Tab at the bottom,The Review Tab is displayed,
+7,"Fill the following field:
  - ""Your Rating""
  - ""Nickname""
  - ""Summary""
  - ""Review""
 Click on the ""Submit Review"" button.","A green message: ""the review has been added"" is displayed",Changed the application behaviour to not require moderation for the review submission
-7,Go to My Wish List,"The ""My Wish List"" page is displayed",
-8,Choose an article in the Wish List and click on its image,The details of the wishlisted article are displayed,
-9,Click on the Review Tab at the bottom,The Review Tab is displayed with the new review,
+8,Go to My Wish List,"The ""My Wish List"" page is displayed",
+9,Choose an article in the Wish List and click on its image,The details of the wishlisted article are displayed,
+10,Click on the Review Tab at the bottom,The Review Tab is displayed with the new review,
 ,,,
 ►,"TC-4-F :: Wish List - Add two items to the Wish List and then to the cart using the ""Add All to Cart"" button",,Fail
 #,Actions,Expected Result,Expected Failure
