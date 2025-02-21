@@ -484,6 +484,53 @@ wheels = [
 ]
 
 [[package]]
+name = "openata"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "anthropic" },
+    { name = "asyncio" },
+    { name = "google-genai" },
+    { name = "ipykernel" },
+    { name = "mistralai" },
+    { name = "openai" },
+    { name = "pillow" },
+    { name = "playwright" },
+    { name = "pydantic" },
+    { name = "pytest-playwright" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-asyncio" },
+    { name = "pytest-mock" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", specifier = ">=0.45.2" },
+    { name = "asyncio", specifier = ">=3.4.3" },
+    { name = "google-genai", specifier = ">=1.0.0" },
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "mistralai", specifier = ">=1.5.0" },
+    { name = "openai", specifier = ">=1.59.8" },
+    { name = "pillow", specifier = ">=11.1.0" },
+    { name = "playwright", specifier = ">=1.49.1" },
+    { name = "pydantic", specifier = ">=2.10.5" },
+    { name = "pytest-playwright", specifier = ">=0.6.2" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "requests", specifier = ">=2.32.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest-asyncio", specifier = ">=0.25.2" },
+    { name = "pytest-mock", specifier = ">=3.14.0" },
+]
+
+[[package]]
 name = "packaging"
 version = "24.2"
 source = { registry = "https://pypi.org/simple" }
@@ -972,53 +1019,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/aa/63/e53da845320b757bf29ef6a9062f5c669fe997973f966045cb019c3f4b66/urllib3-2.3.0.tar.gz", hash = "sha256:f8c5449b3cf0861679ce7e0503c7b44b5ec981bec0d1d3795a07f1ba96f0204d", size = 307268 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/19/4ec628951a74043532ca2cf5d97b7b14863931476d117c471e8e2b1eb39f/urllib3-2.3.0-py3-none-any.whl", hash = "sha256:1cee9ad369867bfdbbb48b7dd50374c0967a0bb7710050facf0dd6911440e3df", size = 128369 },
-]
-
-[[package]]
-name = "vtaas-recherche"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "anthropic" },
-    { name = "asyncio" },
-    { name = "google-genai" },
-    { name = "ipykernel" },
-    { name = "mistralai" },
-    { name = "openai" },
-    { name = "pillow" },
-    { name = "playwright" },
-    { name = "pydantic" },
-    { name = "pytest-playwright" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest-asyncio" },
-    { name = "pytest-mock" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", specifier = ">=0.45.2" },
-    { name = "asyncio", specifier = ">=3.4.3" },
-    { name = "google-genai", specifier = ">=1.0.0" },
-    { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "mistralai", specifier = ">=1.5.0" },
-    { name = "openai", specifier = ">=1.59.8" },
-    { name = "pillow", specifier = ">=11.1.0" },
-    { name = "playwright", specifier = ">=1.49.1" },
-    { name = "pydantic", specifier = ">=2.10.5" },
-    { name = "pytest-playwright", specifier = ">=0.6.2" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "requests", specifier = ">=2.32.3" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest-asyncio", specifier = ">=0.25.2" },
-    { name = "pytest-mock", specifier = ">=3.14.0" },
 ]
 
 [[package]]

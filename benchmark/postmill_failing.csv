@@ -1,4 +1,4 @@
-►,TC-1-F :: Registration - With Google account,,Fail,
+í,TC-1-F :: Registration - With Google account,,Fail,
 #,Actions,Expected Result,Expected Failure,
 1,Go to the site http://www.vtaas-benchmark.com:9999/,"The site's home page is displayed on the ""Postmill"" tab.
 In the header you can also see: 
@@ -146,8 +146,7 @@ It also contains 1 sections on the right:
 - Navigation with: All pages, Recent changes and ""Create new page"".",,
 3,"Click on ""Create this page""","A page with the title ""Create a new page"" is displayed.
 It contains:
-- a mandatory title field pre-filled with ""index"" and non-modifiable
-- a URL field
+- a mandatory URL field pre-filled with ""index"" and non-modifiable
 - a mandatory title field
 - a mandatory ""Body"" field with ""Mardown allowed. Syntax reference +"" below, as for other forms
 - A save button",,

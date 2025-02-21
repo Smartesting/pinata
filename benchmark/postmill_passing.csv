@@ -185,17 +185,17 @@ It contains:
 ►,TC-8-P :: Submission,
 #,Actions,Expected Result
 1,Go to the site http://www.vtaas-benchmark.com:9999/ and log in with account MarvelsGrantMan136 / test1234,The Postmill tab is displayed
-1,"Click on the ""Submit"" tab","the ""Create submission"" page appears. It contains:
+2,"Click on the ""Submit"" tab","the ""Create submission"" page appears. It contains:
 - a URL / Image field
 - A title (mandatory)
 - A body with ""Markdown allowed"" below and a link to syntax references
 - A mandatory ""Forum"" drop-down list
 - A create submission button"
-2,Fill in the title field with: The tester's tavern,The title is filled in
-3,"Select ""science"" in Forum, then click on ""Create submission"".","The post is created
+3,Fill in the title field with: The tester's tavern,The title is filled in
+4,"Select ""science"" in Forum, then click on ""Create submission"".","The post is created
 A page is displayed with the post and below the comments"
-4,Add a comment and confirm,The comment is added
-5,Delete the comment and submission,The page is redirected to the /f/science forum
+5,Add a comment and confirm,The comment is added
+6,Delete the comment and submission,The page is redirected to the /f/science forum
 ,,
 ►,TC-9-P :: Post with URL,
 #,Actions,Expected Result
@@ -319,8 +319,7 @@ It also contains 1 sections on the right:
 - Navigation with: All pages, Recent changes and ""Create new page""."
 3,"Click on ""Create this page""","A page with the title ""Create a new page"" is displayed.
 It contains:
-- a mandatory title field pre-filled with ""index"" and non-modifiable
-- a URL field
+- a mandatory URL field pre-filled with ""index"" and non-modifiable
 - a mandatory title field
 - a mandatory ""Body"" field with ""Mardown allowed. Syntax reference +"" below, as for other forms
 - A save button"
@@ -341,8 +340,7 @@ It also contains 1 sections on the right:
 - Navigation with: All pages, Recent changes and ""Create new page""."
 3,"Click on ""Create this page""","A page with the title ""Create a new page"" is displayed.
 It contains:
-- a mandatory title field pre-filled with ""index"" and non-modifiable
-- a URL field
+- a mandatory URL field pre-filled with ""index"" and non-modifiable
 - a mandatory title field
 - a mandatory ""Body"" field with ""Mardown allowed. Syntax reference +"" below, as for other forms
 - A save button"
@@ -370,8 +368,7 @@ It also contains 1 sections on the right:
 - Navigation with: All pages, Recent changes and ""Create new page""."
 3,"Click on ""Create this page""","A page with the title ""Create a new page"" is displayed.
 It contains:
-- a mandatory title field pre-filled with ""index"" and non-modifiable
-- a URL field
+- a mandatory URL field pre-filled with ""index"" and non-modifiable
 - a mandatory title field
 - a mandatory ""Body"" field with ""Mardown allowed. Syntax reference +"" below, as for other forms
 - A save button"
