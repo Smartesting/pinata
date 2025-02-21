@@ -122,7 +122,7 @@ It contains
 - A ""Delete account"" section with a ""Delete this account"" button"
 7,Change user name and confirm,"The page title is updated with the new account name
 A message indicating that the account has been updated is displayed""."
-8,Log out and log back in with new credentials,"A mandatory ""Confirm username"" field is present. It is followed by a checkbox indicating that you have understood that you will not be able to retrieve the account, and a ""Delete account"" button."
+8,Log out and log back in with new credentials,"The Postmill tab is displayed, the user is logged in with the new credentials"
 9,"Return to ""My account"" and delete the account","A ""Delete account"" page is displayed, showing the actions involved in deleting the account.
 A message indicating that a deletion is definitive is also displayed."
 10,"Fill in the account details, validate the checkbox and click on the delete button.","Return to the ""Postmill"" page while not logged in.
