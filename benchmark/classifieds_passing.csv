@@ -1,4 +1,4 @@
-,,,
+,,
 ►,TC-1-P :: Perform a keyword search and sort results,
 #,Actions,Expected Result
 1,Start on the Homepage: http://www.vtaas-benchmark.com:9980/ ,The homepage is displayed with the search field and category dropdown visible.
