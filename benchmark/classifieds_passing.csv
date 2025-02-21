@@ -155,7 +155,7 @@ Joe for Friend's name
 Joe.Titi@ for Friend's email address
 A gift idea? for The message field
 then click on ""Send"".",An error message stating that the friend's e-mail address is invalid appears
-7,"Replace friend's email address with ""blake.sullivan@gmail.com"" and Send","A green message ""We just sent your message to Joe"" is displayed"
+7,"Replace friend's email address with "Joe.Titi@gmail.com" and Send","A green message ""We just sent your message to Joe"" is displayed"
 ,,
 ►,TC-14-P :: Send to a friend,
 #,Actions,Expected Result
