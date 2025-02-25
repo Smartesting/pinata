@@ -1,4 +1,4 @@
-# OpenATA
+# pinata
 
 Code for an LLM-powered Autonomous Testing Agent (ATA), as presented in the paper _Are Autonomous Web Agents good testers?_.
 
