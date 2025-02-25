@@ -18,6 +18,31 @@ uv sync
 uv run playwright install chromium
 ```
 
+# Tests
+
+To run the unit test cases:
+
+```shell
+uv run pytest -m "not llm"
+```
+
+If you want to run a single file:
+
+```shell
+uv run pytest ./tests/test_actor.py -m "not llm"
+```
+
+The -m flag allows you to filter out certain test cases based on their mark.
+We have marked as "llm" the test cases that involve a actual LLM call.
+LLM test cases are integration/system test cases, we deliberately ignore them when running unit tests.
+To run them:
+
+```shell
+uv run pytest ./tests/test_actor.py -ms "llm"
+```
+
+For integration tests we use the -s flag that prints output in real time and regardless of the test case outcome.
+
 # Run
 
 Execute the _run.py_ file with the appropriate parameters:

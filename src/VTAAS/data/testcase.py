@@ -9,6 +9,7 @@ import argparse
 import time
 from typing import override
 from collections.abc import Sequence
+from uuid import uuid4
 
 # Add parent directory to path for relative imports when running as script
 if __name__ == "__main__":
@@ -120,7 +121,7 @@ class TestCaseCollection:
         self._parse_file()
         self.start_time: float = time.time()
         self.logger: logging.Logger = get_logger(
-            __name__, self.start_time, output_folder
+            "TC collection " + uuid4().hex, self.start_time, output_folder
         )
 
     def _get_file_name(self) -> str:

@@ -57,7 +57,9 @@ async def dummy_page_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest_asyncio.fixture
 async def browser() -> AsyncGenerator[Browser, None]:
     """create and close Browser"""
-    browser_instance = await Browser.create(timeout=1000, id="test_browser")
+    browser_instance = await Browser.create(
+        name="browser_tu", timeout=1000, id="test_browser"
+    )
     yield browser_instance
     await browser_instance.close()
 
@@ -325,14 +327,11 @@ async def test_get_marks(browser: Browser, dummy_page_path: Path):
         result = await browser.get_marks()
         assert len(result) == 6
         assert result[0]["mark"] == "simple-button"
-        assert (
-            result[0]["element"]
-            == '<button data-mark="simple-button">Click Me</button>'
-        )
+        assert result[0]["element"] == "<button >Click Me</button>"
         assert result[1]["mark"] == "navigation-link"
         assert (
             result[1]["element"]
-            == '<a href="https://www.example.com" data-mark="navigation-link">Go to example.com</a>'
+            == '<a href="https://www.example.com" >Go to example.com</a>'
         )
 
 

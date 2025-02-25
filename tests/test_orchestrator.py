@@ -6,7 +6,13 @@ from VTAAS.orchestrator import Orchestrator
 from unittest.mock import AsyncMock, MagicMock
 
 from VTAAS.orchestrator.orchestrator import TestExecutionContext
-from VTAAS.schemas.llm import LLMTestStepPlanResponse, SequenceType
+from VTAAS.schemas.llm import (
+    LLMTestStepPlanResponse,
+    MessageRole,
+    SequenceType,
+    WorkerConfig,
+    WorkerType,
+)
 from VTAAS.schemas.verdict import (
     ActorAction,
     ActorResult,
@@ -14,10 +20,14 @@ from VTAAS.schemas.verdict import (
     Status,
     WorkerResult,
 )
-from VTAAS.schemas.worker import MessageRole, WorkerConfig, WorkerType
 from VTAAS.llm.openai_client import OpenAILLMClient
 from VTAAS.workers.actor import Actor
 from VTAAS.workers.browser import Browser
+
+
+@pytest.fixture
+def mock_history() -> list[str]:
+    return ["did this initially", "eventually did that"]
 
 
 def llm_plan_response_generator() -> Generator[LLMTestStepPlanResponse, None, None]:
@@ -96,32 +106,48 @@ def empty_orchestrator(
 
 
 @pytest.mark.asyncio
-async def test_user_prompt(empty_orchestrator: Orchestrator, mock_test_case: TestCase):
+async def test_user_prompt(
+    empty_orchestrator: Orchestrator, mock_test_case: TestCase, mock_history: list[str]
+):
     """Test main prompt builds itself"""
+    page_info = "page info"
+    viewport_info = "top of the page"
     context = TestExecutionContext(
         test_case=mock_test_case,
         current_step=mock_test_case.get_step(2),
         step_index=2,
+        history=mock_history,
     )
-    prompt = empty_orchestrator._build_user_init_prompt(context)
+    prompt = empty_orchestrator._build_user_init_prompt(
+        context, page_info, viewport_info
+    )
     action, assertion = context.current_step
     test_step = f"{context.step_index}. action: {action}, assertion: {assertion}"
-    print(prompt)
     assert f"<test_case>\n{context.test_case.__str__()}\n</test_case>" in prompt
     assert f"<current_step>\n{test_step}\n</current_step>" in prompt
+    assert page_info in prompt
+    assert viewport_info in prompt
+    for history in mock_history:
+        assert history in prompt
 
 
 @pytest.mark.asyncio
-async def test_conversation(empty_orchestrator: Orchestrator, mock_test_case: TestCase):
+async def test_conversation(
+    empty_orchestrator: Orchestrator, mock_test_case: TestCase, mock_history: list[str]
+):
     """Test prompt builds itself"""
     context = TestExecutionContext(
         test_case=mock_test_case,
         current_step=mock_test_case.get_step(3),
         step_index=3,
+        history=mock_history,
     )
     fake_screenshot = b"screen"
-    history = "this is history"
-    empty_orchestrator._setup_conversation(context, fake_screenshot, history)
+    page_info = "page info"
+    viewport_info = "top of the page"
+    empty_orchestrator._setup_conversation(
+        context, fake_screenshot, page_info, viewport_info
+    )
     assert empty_orchestrator.conversation[0].role == MessageRole.System
     assert (
         "Your role is to analyze test steps"
@@ -132,7 +158,8 @@ async def test_conversation(empty_orchestrator: Orchestrator, mock_test_case: Te
     assert (
         "Plan for the current test step" in empty_orchestrator.conversation[1].content
     )
-    assert history in empty_orchestrator.conversation[1].content
+    for history in mock_history:
+        assert history in empty_orchestrator.conversation[1].content
     assert empty_orchestrator.conversation[1].screenshot is not None
     assert len(empty_orchestrator.conversation[1].screenshot) == 1
     assert empty_orchestrator.conversation[1].screenshot[0] == fake_screenshot
@@ -178,9 +205,6 @@ def test_merge_worker_results_success(empty_orchestrator: Orchestrator):
     assert 'Assert("validate result") -> success' in message
     assert "  Report: Everything checks out" in message
 
-    # assert "<last_screenshot_analysis>" in message
-    # assert "Then generate another sequence" in message
-
     assert screenshots == [b"actor screenshot", b"assertor screenshot"]
 
 
@@ -204,9 +228,6 @@ def test_merge_worker_results_failure(empty_orchestrator: Orchestrator):
     assert 'Act("go to myspace.com") -> fail' in message
     assert "  Actions:" in message
     assert "  - Let's browse to the home page" in message
-
-    # assert "<recovery>" in message
-    # assert "State your decision" in message
 
     assert screenshots == [b"goto screenshot"]
 
@@ -232,36 +253,3 @@ async def test_integ_step():
         verdict = await orchestrator.process_step(context)
         print(verdict.model_dump_json())
         assert verdict.status == Status.PASS
-
-
-# @pytest.mark.asyncio
-# async def test_process_step(
-#     mock_llm_client: OpenAILLMClient,
-#     mock_browser: Browser,
-#     mock_test_case_1: TestCase,
-# ):
-#     with (
-#         patch(
-#             "VTAAS.orchestrator.orchestrator.LLMClient", return_value=mock_llm_client
-#         ),
-#         patch("VTAAS.orchestrator.orchestrator.Browser", return_value=mock_browser),
-#     ):
-#         orchestrator = Orchestrator(mock_browser)
-#         orchestrator._test_case = mock_test_case_1
-#         orchestrator._current_step = (
-#             mock_test_case_1.actions[1],
-#             mock_test_case_1.expected_results[1],
-#         )
-#         verdict: TestCaseVerdict = await orchestrator.process_step(mock_test_case_1)
-#
-#         assert verdict.status == "success"
-#         # assert verdict.explaination == "Logged in as hello_AI"
-#
-#         mock_browser = cast(AsyncMock, mock_browser)
-#         mock_browser.mark_page.assert_awaited()
-#         mock_browser.screenshot.assert_awaited()
-#         mock_browser.click.assert_called_with("2")
-#         mock_browser.fill.assert_called_with("3", "hello_AI")
-#
-#         mock_llm_client = cast(AsyncMock, mock_llm_client)
-#         assert mock_llm_client.act.call_count == 3

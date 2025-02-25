@@ -41,7 +41,7 @@ def deserialize_test_case(
 async def run_testcase(test_case: TestCase, output_folder: str, provider: str):
     async with async_playwright() as p:
         browser = await Browser.create(
-            id="actor_test_integ_browser",
+            id=f"testcase #{test_case.id}",
             headless=False,
             playwright=p,
             save_screenshot=False,
@@ -74,9 +74,9 @@ async def run_testcase(test_case: TestCase, output_folder: str, provider: str):
         execution_result = await orchestrator.process_testcase(test_case)
 
         if execution_result.status == Status.PASS:
-            print("SUCCESS!")
+            orchestrator.logger.info("SUCCESS!")
         else:
-            print("FAIL!")
+            orchestrator.logger.info(f"FAIL at step {execution_result.step_index}!")
 
 
 async def main():

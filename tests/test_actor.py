@@ -1,5 +1,6 @@
 from collections.abc import Generator
 import logging
+from tempfile import mktemp
 from typing import cast
 from playwright.async_api import async_playwright
 import pytest
@@ -8,15 +9,16 @@ from unittest.mock import AsyncMock, patch
 from VTAAS.data.testcase import TestCaseCollection
 from VTAAS.llm.llm_client import LLMClient, LLMProvider
 from VTAAS.schemas.llm import (
-    ClickGoogleCommand,
-    FillGoogleCommand,
+    ClickCommand,
+    FillCommand,
     FinishCommand,
     LLMActResponse,
+    MessageRole,
 )
 from VTAAS.schemas.verdict import ActorResult, Status, WorkerResult
-from VTAAS.schemas.worker import ActorInput, MessageRole
+from VTAAS.schemas.worker import ActorInput
 from VTAAS.workers.actor import Actor
-from VTAAS.workers.browser import Browser
+from VTAAS.workers.browser import Browser, Mark
 
 MOCKED_QUERY = "This is a mock query"
 
@@ -25,22 +27,25 @@ def llm_act_response_generator() -> Generator[LLMActResponse, None, None]:
     responses = [
         LLMActResponse(
             current_webpage_identification="Home Page",
-            screenshot_analysis="We see a login button at the top right-end corner, labelled '2'",
+            screenshot_analysis="We see a login button at the top right-end corner",
             query_progress="N/A",
+            element_recognition="The login button is labelled as '2'",
             next_action="Click login button labelled '2'",
-            command=ClickGoogleCommand(name="click", label=2),
+            command=ClickCommand(name="click", label=2),
         ),
         LLMActResponse(
             current_webpage_identification="Login page",
-            screenshot_analysis="There's a single username field labelled '3'",
+            screenshot_analysis="There's a single username field in the screenshot",
             query_progress="not yet",
+            element_recognition="The username field is labelled as '3'",
             next_action="fill 'hello_AI' in username field labelled '3'",
-            command=FillGoogleCommand(name="fill", label=3, value="hello_AI"),
+            command=FillCommand(name="fill", label=3, value="hello_AI"),
         ),
         LLMActResponse(
             current_webpage_identification="Dashboard",
             screenshot_analysis="It appears the login was successful, a 'Welcome hello_AI' message is visible",
             query_progress="The query is complete",
+            element_recognition="N/A",
             next_action="finish",
             command=FinishCommand(
                 name="finish", status=Status.PASS, reason="Logged in as hello_AI"
@@ -92,25 +97,52 @@ def mock_actor_input() -> ActorInput:
 
 
 @pytest.fixture
+def mock_som_marks() -> list[Mark]:
+    return [
+        Mark(mark="1", element='<button type="submit" />'),
+        Mark(mark="2", element='<input type="text" id="username" />'),
+    ]
+
+
+@pytest.fixture
 def empty_actor(mock_query: str, mock_browser: Browser) -> Actor:
-    return Actor(mock_query, mock_browser, LLMProvider.OPENAI)
+    start_time = 1740697199
+    output_folder = mktemp()
+    return Actor(
+        "actor_tu",
+        mock_query,
+        mock_browser,
+        LLMProvider.OPENAI,
+        start_time,
+        output_folder,
+    )
 
 
 @pytest.mark.asyncio
 async def test_user_prompt(empty_actor: Actor, mock_actor_input: ActorInput):
     """Test main prompt builds itself"""
-    prompt = empty_actor._build_user_prompt(mock_actor_input)
+    page_info = "page info"
+    viewport_info = "top of the page"
+    prompt = empty_actor._build_user_prompt(mock_actor_input, page_info, viewport_info)
     assert (
         f"<previous_actions>\n{mock_actor_input.history}\n</previous_actions>" in prompt
     )
     assert f"<act_query>\n{MOCKED_QUERY}\n</act_query>" in prompt
+    assert page_info in prompt
+    assert viewport_info in prompt
 
 
 @pytest.mark.asyncio
-async def test_conversation(empty_actor: Actor, mock_actor_input: ActorInput):
+async def test_conversation(
+    empty_actor: Actor, mock_actor_input: ActorInput, mock_som_marks: list[Mark]
+):
     """Test main prompt builds itself"""
     fake_screenshot = b"screen"
-    empty_actor._setup_conversation(mock_actor_input, fake_screenshot)
+    page_info = "page info"
+    viewport_info = "top of the page"
+    empty_actor._setup_conversation(
+        mock_actor_input, fake_screenshot, page_info, viewport_info, mock_som_marks
+    )
     assert empty_actor.conversation[0].role == MessageRole.System
     assert (
         "Your role is to perform the provided query"
@@ -122,6 +154,8 @@ async def test_conversation(empty_actor: Actor, mock_actor_input: ActorInput):
         "Your role is to analyze the current state of the web application"
         in empty_actor.conversation[1].content
     )
+    assert viewport_info in empty_actor.conversation[1].content
+    assert page_info in empty_actor.conversation[1].content
     assert empty_actor.conversation[1].screenshot == [fake_screenshot]
 
 
@@ -137,8 +171,15 @@ async def test_actor_process_3_rounds(
             "VTAAS.workers.actor.add_banner", return_value=b"banner_screenshot"
         ) as mock_add_banner,
     ):
+        start_time = 1740697199
+        output_folder = mktemp()
         actor = Actor(
-            query="Test Query", browser=mock_browser, llm_provider=LLMProvider.OPENAI
+            "actor_tu",
+            "Test Query",
+            mock_browser,
+            LLMProvider.OPENAI,
+            start_time,
+            output_folder,
         )
         result: WorkerResult = await actor.process(mock_actor_input)
 
@@ -174,14 +215,25 @@ async def test_integ():
         test_case=str(test_case), test_step=test_step, history=None
     )
     async with async_playwright() as p:
+        start_time = 1740697199
+        output_folder = mktemp()
         browser = await Browser.create(
             id="actor_test_integ_browser",
             headless=False,
             playwright=p,
             save_screenshot=True,
+            start_time=start_time,
+            trace_folder=output_folder,
         )
         _ = await browser.goto(url)
-        actor = Actor(query, browser, LLMProvider.OPENAI)
+        actor = Actor(
+            "actor_test_integ",
+            query,
+            browser,
+            LLMProvider.OPENAI,
+            start_time,
+            output_folder,
+        )
         verdict = await actor.process(actor_input)
         print(verdict)
         assert verdict.status == Status.PASS

@@ -147,6 +147,7 @@ class Orchestrator:
                     )
             return TestCaseVerdict(status=Status.PASS, explaination=None)
         except Exception as e:
+            self.logger.warning(f"got this error: {str(e)}")
             return TestCaseVerdict(
                 status=Status.FAIL,
                 step_index=exec_context.step_index,
