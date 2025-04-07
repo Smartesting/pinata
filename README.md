@@ -21,6 +21,8 @@ All three components (orchestrator, actor, and assertor) share a global memory s
 
 Finally, all three agents share a similar profile module, presenting themselves as part of a multi-agent system while clearly defining their specific roles.
 
+![pinata process](img/process.png)
+
 # Install
 
 First install uv, installation details [here](https://docs.astral.sh/uv/getting-started/installation/).
@@ -123,6 +125,7 @@ To run the benchmark presented in the paper, execute the _evaluation.py_ file wi
 
 # Cite our work
 
+```bibtex
 @misc{ChevrVFBL25,
 title = {Are {{Autonomous Web Agents Good Testers}}?},
 author = {Chevrot, Antoine and Vernotte, Alexandre and Falleri, Jean-R{\'e}my and Blanc, Xavier and Legeard, Bruno},
@@ -130,3 +133,4 @@ year = {2025},
 doi = {10.48550/arXiv.2504.01495},
 url = {https://arxiv.org/abs/2504.01495}
 }
+```
